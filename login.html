@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Click Seguro - Portal Web</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap%22 rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+ 
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background: #000;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+ 
+        .grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(0, 255, 65, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 65, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+ 
+        .scan-line {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 255, 65, 0.2);
+            animation: scan 6s linear infinite;
+            pointer-events: none;
+            z-index: 100;
+        }
+ 
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+ 
+        .left-panel {
+            flex: 1;
+            background:
+                radial-gradient(ellipse at center, rgba(0, 255, 65, 0.1) 0%, transparent 70%),
+                #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+            color: #00ff41;
+            position: relative;
+            z-index: 1;
+            border-right: 2px solid rgba(0, 255, 65, 0.3);
+        }
+ 
+        .left-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 255, 65, 0.02) 2px,
+                    rgba(0, 255, 65, 0.02) 4px
+                );
+            pointer-events: none;
+        }
+ 
+        .left-panel-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 600px;
+        }
+ 
+        .logo-big {
+            width: 120px;
+            height: 120px;
+            background: transparent;
+            border: 3px solid #00ff41;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            font-size: 60px;
+            box-shadow:
+                0 0 30px rgba(0, 255, 65, 0.5),
+                0 0 60px rgba(0, 255, 65, 0.3),
+                inset 0 0 30px rgba(0, 255, 65, 0.1);
+            animation: pulse 2s ease-in-out infinite;
+        }
+ 
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 0 30px rgba(0, 255, 65, 0.5), 0 0 60px rgba(0, 255, 65, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 50px rgba(0, 255, 65, 0.8), 0 0 100px rgba(0, 255, 65, 0.5);
+            }
+        }
+ 
+        .left-panel h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 56px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            margin-bottom: 20px;
+            text-shadow:
+                0 0 10px rgba(0, 255, 65, 0.8),
+                0 0 20px rgba(0, 255, 65, 0.5),
+                0 0 40px rgba(0, 255, 65, 0.3);
+        }
+ 
+        .left-panel .subtitle {
+            font-size: 14px;
+            letter-spacing: 3px;
+            opacity: 0.7;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+ 
+        .left-panel p {
+            font-size: 16px;
+            line-height: 1.8;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+ 
+        .features {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+ 
+        .feature {
+            background: rgba(0, 255, 65, 0.05);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+ 
+        .feature:hover {
+            background: rgba(0, 255, 65, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+            transform: translateY(-3px);
+        }
+ 
+        .right-panel {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            background: #000;
+            position: relative;
+            z-index: 1;
+        }
+ 
+        .login-box {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff41;
+            padding: 50px;
+            border-radius: 15px;
+            box-shadow:
+                0 0 30px rgba(0, 255, 65, 0.3),
+                0 0 60px rgba(0, 255, 65, 0.1),
+                inset 0 0 30px rgba(0, 255, 65, 0.05);
+            width: 100%;
+            max-width: 480px;
+            position: relative;
+        }
+ 
+        .login-box::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #00ff41, transparent, #00ff41, transparent);
+            border-radius: 15px;
+            z-index: -1;
+            opacity: 0.3;
+            animation: borderGlow 3s linear infinite;
+        }
+ 
+        @keyframes borderGlow {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+        }
+ 
+        .logo {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+ 
+        .logo-icon {
+            width: 80px;
+            height: 80px;
+            background: transparent;
+            border: 3px solid #00ff41;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 40px;
+            box-shadow:
+                0 0 20px rgba(0, 255, 65, 0.5),
+                0 0 40px rgba(0, 255, 65, 0.3);
+        }
+ 
+        .logo h2 {
+            font-family: 'Orbitron', sans-serif;
+            color: #00ff41;
+            font-size: 28px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+            text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
+ 
+        .logo p {
+            color: #00ff41;
+            font-size: 12px;
+            letter-spacing: 2px;
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+ 
+        .form-group {
+            margin-bottom: 25px;
+        }
+ 
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            color: #00ff41;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+ 
+        .input-wrapper {
+            position: relative;
+        }
+ 
+        .form-group input {
+            width: 100%;
+            padding: 16px 45px 16px 15px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(0, 255, 65, 0.3);
+            border-radius: 8px;
+            color: #00ff41;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 15px;
+            transition: all 0.3s;
+            letter-spacing: 1px;
+        }
+ 
+        .form-group input::placeholder {
+            color: rgba(0, 255, 65, 0.4);
+        }
+ 
+        .form-group input:focus {
+            outline: none;
+            border-color: #00ff41;
+            box-shadow:
+                0 0 15px rgba(0, 255, 65, 0.3),
+                inset 0 0 10px rgba(0, 255, 65, 0.1);
+        }
+ 
+        .input-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #00ff41;
+            font-size: 18px;
+            opacity: 0.6;
+        }
+ 
+        .options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            font-size: 12px;
+        }
+ 
+        .remember {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #00ff41;
+            cursor: pointer;
+            letter-spacing: 1px;
+        }
+ 
+        .remember input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #00ff41;
+            cursor: pointer;
+        }
+ 
+        .forgot-password {
+            color: #00ff41;
+            text-decoration: none;
+            font-weight: 700;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+ 
+        .forgot-password:hover {
+            text-shadow: 0 0 10px #00ff41;
+        }
+ 
+        .btn-login {
+            width: 100%;
+            padding: 18px;
+            background: transparent;
+            color: #00ff41;
+            border: 2px solid #00ff41;
+            border-radius: 8px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            position: relative;
+            overflow: hidden;
+        }
+ 
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.2), transparent);
+            transition: left 0.5s;
+        }
+ 
+        .btn-login:hover::before {
+            left: 100%;
+        }
+ 
+        .btn-login:hover {
+            background: rgba(0, 255, 65, 0.1);
+            box-shadow:
+                0 0 20px rgba(0, 255, 65, 0.5),
+                0 0 40px rgba(0, 255, 65, 0.3);
+            transform: translateY(-3px);
+        }
+ 
+        .btn-login:active {
+            transform: translateY(-1px);
+        }
+ 
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 30px 0;
+            color: #00ff41;
+            font-size: 12px;
+            letter-spacing: 2px;
+            opacity: 0.6;
+        }
+ 
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(0, 255, 65, 0.3);
+        }
+ 
+        .divider span {
+            padding: 0 15px;
+        }
+ 
+        .social-login {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+ 
+        .social-btn {
+            flex: 1;
+            padding: 14px;
+            background: transparent;
+            border: 2px solid rgba(0, 255, 65, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: #00ff41;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+ 
+        .social-btn:hover {
+            border-color: #00ff41;
+            background: rgba(0, 255, 65, 0.1);
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+            transform: translateY(-2px);
+        }
+ 
+        .register-link {
+            text-align: center;
+            color: #00ff41;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+ 
+        .register-link a {
+            color: #00ff41;
+            text-decoration: none;
+            font-weight: 700;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s;
+        }
+ 
+        .register-link a:hover {
+            border-bottom-color: #00ff41;
+            text-shadow: 0 0 10px #00ff41;
+        }
+ 
+        .alert {
+            padding: 14px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            display: none;
+            font-size: 12px;
+            letter-spacing: 1px;
+            animation: slideIn 0.3s ease;
+        }
+ 
+        .alert-error {
+            background: rgba(255, 0, 64, 0.1);
+            color: #ff0040;
+            border: 1px solid #ff0040;
+            box-shadow: 0 0 15px rgba(255, 0, 64, 0.3);
+        }
+ 
+        .alert-success {
+            background: rgba(0, 255, 65, 0.1);
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+        }
+ 
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+ 
+        @media (max-width: 968px) {
+            .left-panel {
+                display: none;
+            }
+           
+            .right-panel {
+                padding: 20px;
+            }
+           
+            .login-box {
+                padding: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="scan-line"></div>
+ 
+    <div class="left-panel">
+        <div class="left-panel-content">
+            <div class="logo-big">🛡️</div>
+            <h1>CLICK SEGURO</h1>
+            <div class="subtitle">// Sistema de Protección contra Phishing</div>
+            <p>Analiza URLs en tiempo real antes de hacer clic. Tu escudo de seguridad contra enlaces maliciosos, códigos QR sospechosos y robo de credenciales.</p>
+            <div class="features">
+                <div class="feature">🔒 Análisis Real-time</div>
+                <div class="feature">📱 Multiplataforma</div>
+                <div class="feature">⚡ Detección IA</div>
+            </div>
+        </div>
+    </div>
+ 
+    <div class="right-panel">
+        <div class="login-box">
+            <div class="logo">
+                <div class="logo-icon">🛡️</div>
+                <h2>ACCESO AL SISTEMA</h2>
+                <p>// Inicia sesión para continuar</p>
+            </div>
+ 
+            <div class="alert alert-error" id="errorMsg"></div>
+            <div class="alert alert-success" id="successMsg"></div>
+ 
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">> Usuario</label>
+                    <div class="input-wrapper">
+                        <input type="email" id="email" placeholder="usuario@clickseguro.com" required>
+                        <span class="input-icon">@</span>
+                    </div>
+                </div>
+ 
+                <div class="form-group">
+                    <label for="password">> Contraseña</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="password" placeholder="••••••••" required>
+                        <span class="input-icon"></span>
+                    </div>
+                </div>
+ 
+                <div class="options">
+                    <label class="remember">
+                        <input type="checkbox" id="remember">
+                        <span>RECORDAR 30 DÍAS</span>
+                    </label>
+                    <a href="#" class="forgot-password">¿RECUPERAR?</a>
+                </div>
+ 
+                <button type="submit" class="btn-login">[ INICIAR SESIÓN ]</button>
+            </form>
+ 
+            <div class="divider">
+                <span>O CONTINÚA CON</span>
+            </div>
+ 
+            <div class="social-login">
+                <button class="social-btn" onclick="socialLogin('Google')">🔍 GOOGLE</button>
+                <button class="social-btn" onclick="socialLogin('GitHub')">⌨️ GITHUB</button>
+            </div>
+ 
+            <div class="register-link">
+                ¿Sin acceso? <a href="#">SOLICITAR CUENTA</a>
+            </div>
+        </div>
+    </div>
+ 
+    <script>
+        const mockUsers = [
+            { email: 'mateo@clickseguro.com', password: 'mateo123', name: 'MATEO' },
+            { email: 'martin@clickseguro.com', password: 'martin123', name: 'MARTIN' },
+            { email: 'ale@clickseguro.com', password: 'ale123', name: 'ALE' },
+            { email: 'melani@clickseguro.com', password: 'melani123', name: 'MELANI' }
+        ];
+ 
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+           
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const remember = document.getElementById('remember').checked;
+           
+            const errorMsg = document.getElementById('errorMsg');
+            const successMsg = document.getElementById('successMsg');
+           
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+           
+            const user = mockUsers.find(u => u.email === email && u.password === password);
+           
+            if (user) {
+                successMsg.innerHTML = `✓ ACCESO CONCEDIDO<br>> Bienvenido: ${user.name}<br>> Cargando dashboard...`;
+                successMsg.style.display = 'block';
+               
+                if (remember) {
+                    localStorage.setItem('clickSeguroUser', JSON.stringify({
+                        email: user.email,
+                        name: user.name,
+                        loginTime: new Date().toISOString()
+                    }));
+                }
+               
+                setTimeout(() => {
+                    alert(`[✓] LOGIN EXITOSO\n\nUSUARIO: ${user.name}\nEMAIL: ${user.email}\n\n> Cargando sistema...`);
+                }, 1000);
+            } else {
+                errorMsg.innerHTML = `✗ ACCESO DENEGADO<br>> Credenciales inválidas<br>> Intenta: mateo@clickseguro.com / mateo123`;
+                errorMsg.style.display = 'block';
+               
+                document.querySelector('.login-box').style.animation = 'shake 0.5s';
+                setTimeout(() => {
+                    document.querySelector('.login-box').style.animation = '';
+                }, 500);
+            }
+        });
+ 
+        function socialLogin(provider) {
+            alert(`[!] LOGIN CON ${provider.toUpperCase()}\n\n> Integración OAuth pendiente\n> Usa el login tradicional por ahora`);
+        }
+ 
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                20%, 60% { transform: translateX(-10px); }
+                40%, 80% { transform: translateX(10px); }
+            }
+        `;
+        document.head.appendChild(style);
+ 
+        window.addEventListener('load', () => {
+            const savedUser = localStorage.getItem('clickSeguroUser');
+            if (savedUser) {
+                const user = JSON.parse(savedUser);
+                document.getElementById('email').value = user.email;
+                document.getElementById('remember').checked = true;
+            }
+        });
+ 
+        document.querySelector('.forgot-password').addEventListener('click', (e) => {
+            e.preventDefault();
+            alert('[!] RECUPERACIÓN DE CUENTA\n\n> Sistema en desarrollo\n> Contacta al administrador');
+        });
+    </script>
+</body>
+</html>
+ 
