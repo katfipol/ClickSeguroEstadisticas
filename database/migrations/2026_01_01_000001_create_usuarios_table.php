@@ -8,19 +8,19 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('usuarios', function (Blueprint $t) {
-            $t->id();
-            $t->string('nombre', 100); // Uno o varios nombres
-            $t->string('apellido_paterno', 100)->nullable();
-            $t->string('apellido_materno', 100)->nullable();
-            $t->string('email', 150)->unique();
-            $t->string('password');
-            $t->timestamps(); // created_at = fecha de registro
+        Schema::create('usuario', function (Blueprint $tabla) {
+            $tabla->id('id_usuario');
+            $tabla->string('nombre', 100);
+            $tabla->string('apellido_paterno', 100)->nullable();
+            $tabla->string('apellido_materno', 100)->nullable();
+            $tabla->string('email', 150)->unique();
+            $tabla->string('password');
+            $tabla->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('usuarios');
+        Schema::dropIfExists('usuario');
     }
 };

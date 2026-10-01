@@ -6,17 +6,31 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class Usuario extends Authenticatable
 {
-    protected $table = 'usuarios';
-    protected $fillable = ['nombre', 'apellido_paterno', 'apellido_materno', 'email', 'password'];
+    protected $table = 'usuario';
+
+    protected $primaryKey = 'id_usuario';
+
+    protected $fillable = [
+        'nombre',
+        'apellido_paterno',
+        'apellido_materno',
+        'email',
+        'password',
+    ];
+
     protected $hidden = ['password'];
 
     public function getNombreCompletoAttribute(): string
     {
         $partes = [$this->nombre, $this->apellido_paterno, $this->apellido_materno];
-        return implode(' ', array_filter($partes, fn ($parte) => $parte !== null && $parte !== ''));
+
+        return implode(' ', array_filter(
+            $partes,
+            fn ($parte) => $parte !== null && $parte !== ''
+        ));
     }
 
-    // La tabla no tiene remember_token (no se requiere "recordarme").
+    // El acceso persistente de "recordarme" no forma parte del alcance actual.
     public function getRememberTokenName()
     {
         return '';
@@ -24,11 +38,11 @@ class Usuario extends Authenticatable
 
     public function analisis()
     {
-        return $this->hasMany(Analisis::class, 'usuario_id');
+        return $this->hasMany(Analisis::class, 'id_usuario', 'id_usuario');
     }
 
     public function reportes()
     {
-        return $this->hasMany(Reporte::class, 'usuario_id');
+        return $this->hasMany(Reporte::class, 'id_usuario', 'id_usuario');
     }
 }

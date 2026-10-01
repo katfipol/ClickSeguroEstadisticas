@@ -9,15 +9,15 @@
 <table>
   <thead><tr><th>URL</th><th>Fecha</th><th>Nivel de riesgo</th><th>Acciones</th></tr></thead>
   <tbody>
-  @foreach ($analisis as $a)
+  @foreach ($analisis as $registroAnalisis)
     <tr>
-      <td class="mono corto">{{ $a->url->url }}@if($a->urlFinal)<br><span class="muted">→ {{ $a->urlFinal->url }}</span>@endif</td>
-      <td>{{ $a->created_at->format('d/m/Y H:i') }}</td>
-      <td><span class="badge riesgo-{{ strtolower($a->tipoRiesgo->nombre) }}">{{ $a->tipoRiesgo->nombre }}</span></td>
+      <td class="mono corto">{{ $registroAnalisis->url->url }}@if($registroAnalisis->urlFinal)<br><span class="muted">→ {{ $registroAnalisis->urlFinal->url }}</span>@endif</td>
+      <td>{{ $registroAnalisis->created_at->format('d/m/Y H:i') }}</td>
+      <td><span class="badge riesgo-{{ strtolower($registroAnalisis->tipoRiesgo->nombre) }}">{{ $registroAnalisis->tipoRiesgo->nombre }}</span></td>
       <td class="acciones-fila">
-        <a href="{{ route('analisis.show', $a->id) }}">Ver</a>
-        <form method="POST" action="{{ route('analisis.reanalizar', $a->id) }}">@csrf<button class="link" type="submit">Reanalizar</button></form>
-        <form method="POST" action="{{ route('analisis.destroy', $a->id) }}" data-confirm="¿Eliminar este análisis? No se puede deshacer.">@csrf @method('DELETE')<button class="link peligro" type="submit">Eliminar</button></form>
+        <a href="{{ route('analisis.show', $registroAnalisis->getKey()) }}">Ver</a>
+        <form method="POST" action="{{ route('analisis.reanalizar', $registroAnalisis->getKey()) }}">@csrf<button class="link" type="submit">Reanalizar</button></form>
+        <form method="POST" action="{{ route('analisis.destroy', $registroAnalisis->getKey()) }}" data-confirm="¿Eliminar este análisis? No se puede deshacer.">@csrf @method('DELETE')<button class="link peligro" type="submit">Eliminar</button></form>
       </td>
     </tr>
   @endforeach

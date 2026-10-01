@@ -9,16 +9,16 @@ class EstadisticaController extends Controller
 {
     public function index(Request $request)
     {
-        $uid = $request->user()->id;
+        $idUsuario = $request->user()->getKey();
         // Todo se calcula con consultas sobre las tablas existentes; no hay tabla de estadísticas.
-        $porRiesgo = Analisis::where('analisis.usuario_id', $uid)
-            ->join('tipo_riesgos', 'tipo_riesgos.id', '=', 'analisis.tipo_riesgo_id')
-            ->selectRaw('tipo_riesgos.nombre as nombre, COUNT(*) as total')
-            ->groupBy('tipo_riesgos.nombre')
+        $porRiesgo = Analisis::where('analisis.id_usuario', $idUsuario)
+            ->join('tipo_riesgo', 'tipo_riesgo.id_tipo_riesgo', '=', 'analisis.id_tipo_riesgo')
+            ->selectRaw('tipo_riesgo.nombre as nombre, COUNT(*) as total')
+            ->groupBy('tipo_riesgo.nombre')
             ->pluck('total', 'nombre');
 
         $stats = [
-            'total'       => Analisis::where('usuario_id', $uid)->count(),
+            'total'       => Analisis::where('id_usuario', $idUsuario)->count(),
             'seguros'     => (int) ($porRiesgo['Seguro'] ?? 0),
             'sospechosos' => (int) ($porRiesgo['Sospechoso'] ?? 0),
             'peligrosos'  => (int) ($porRiesgo['Peligroso'] ?? 0),

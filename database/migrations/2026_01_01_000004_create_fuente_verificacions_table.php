@@ -8,15 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('fuente_verificacions', function (Blueprint $t) {
-            $t->id();
-            $t->string('nombre', 50)->unique();
-            $t->timestamps();
+        Schema::create('fuente_verificacion', function (Blueprint $tabla) {
+            $tabla->id('id_fuente');
+            $tabla->string('nombre', 50)->unique();
+            $tabla->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('fuente_verificacions');
+        Schema::dropIfExists('fuente_verificacion');
     }
 };

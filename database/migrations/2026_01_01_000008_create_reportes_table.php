@@ -8,19 +8,27 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('reportes', function (Blueprint $t) {
-            $t->id();
-            $t->foreignId('usuario_id')->constrained('usuarios')->cascadeOnDelete();
-            $t->foreignId('url_id')->constrained('urls')->restrictOnDelete();
-            $t->string('motivo', 500)->nullable();
-            $t->string('estado', 20)->default('pendiente'); // pendiente | revisado | descartado
-            $t->timestamps();
-            $t->unique(['usuario_id', 'url_id']);
+        Schema::create('reporte', function (Blueprint $tabla) {
+            $tabla->id('id_reporte');
+
+            $tabla->foreignId('id_usuario')
+                ->constrained('usuario', 'id_usuario')
+                ->cascadeOnDelete();
+
+            $tabla->foreignId('id_url')
+                ->constrained('url', 'id_url')
+                ->restrictOnDelete();
+
+            $tabla->string('motivo', 500)->nullable();
+            $tabla->string('estado', 20)->default('pendiente');
+            $tabla->timestamps();
+
+            $tabla->unique(['id_usuario', 'id_url']);
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('reportes');
+        Schema::dropIfExists('reporte');
     }
 };

@@ -18,64 +18,79 @@ class AnalisisService
 
     public function registrarUrl(string $normalizada): Url
     {
-        $dominio = Dominio::firstOrCreate(['nombre' => $this->urls->host($normalizada)]);
+        $dominio = Dominio::firstOrCreate([
+            'nombre' => $this->urls->host($normalizada),
+        ]);
+
         return Url::firstOrCreate(
             ['url_hash' => hash('sha256', $normalizada)],
-            ['dominio_id' => $dominio->id, 'url' => $normalizada]
+            ['id_dominio' => $dominio->getKey(), 'url' => $normalizada]
         );
     }
 
-    /** Crea SIEMPRE un análisis nuevo; un reanálisis enlaza al anterior sin modificarlo. */
+    // Cada reanálisis crea otro registro para conservar el resultado anterior.
     public function analizar(Usuario $usuario, string $entrada, ?Analisis $anterior = null): Analisis
     {
-        $normal = $this->urls->normalizar($entrada);
-        $url = $this->registrarUrl($normal);
+        $urlNormalizada = $this->urls->normalizar($entrada);
+        $url = $this->registrarUrl($urlNormalizada);
 
-        $final = null;
-        $objetivo = $normal;
-        if ($this->urls->esAcortado($normal)) {
-            $destino = $this->urls->resolverFinal($normal);
-            if ($destino !== $normal) {
-                $final = $this->registrarUrl($destino);
-                $objetivo = $destino;
+        $urlFinal = null;
+        $urlObjetivo = $urlNormalizada;
+
+        if ($this->urls->esAcortado($urlNormalizada)) {
+            $urlDestino = $this->urls->resolverFinal($urlNormalizada);
+
+            if ($urlDestino !== $urlNormalizada) {
+                $urlFinal = $this->registrarUrl($urlDestino);
+                $urlObjetivo = $urlDestino;
             }
         }
 
-       $resultado = $this->virusTotal->analizar($objetivo, $anterior !== null);
+        $resultado = $this->virusTotal->analizar($urlObjetivo, $anterior !== null);
         $riesgo = TipoRiesgo::where('nombre', $this->clasificar($resultado))->firstOrFail();
         $fuente = FuenteVerificacion::where('nombre', 'VirusTotal')->firstOrFail();
 
-        return DB::transaction(function () use ($usuario, $url, $final, $riesgo, $fuente, $resultado, $anterior) {
+        return DB::transaction(function () use ($usuario, $url, $urlFinal, $riesgo, $fuente, $resultado, $anterior) {
             $analisis = Analisis::create([
-                'usuario_id'           => $usuario->id,
-                'url_id'               => $url->id,
-                'url_final_id'         => $final?->id,
-                'tipo_riesgo_id'       => $riesgo->id,
-                'analisis_anterior_id' => $anterior?->id,
+                'id_usuario' => $usuario->getKey(),
+                'id_url' => $url->getKey(),
+                'id_url_final' => $urlFinal?->getKey(),
+                'id_tipo_riesgo' => $riesgo->getKey(),
+                'id_analisis_anterior' => $anterior?->getKey(),
             ]);
-            foreach ($this->filas($resultado) as $fila) {
-                $analisis->detalles()->create($fila + ['fuente_verificacion_id' => $fuente->id]);
+
+            foreach ($this->filas($resultado) as $detalle) {
+                $analisis->detalles()->create($detalle + [
+                    'id_fuente' => $fuente->getKey(),
+                ]);
             }
+
             return $analisis;
         });
     }
 
-    public function clasificar(array $r): string
+    public function clasificar(array $resultado): string
     {
-        if ($r['malicious'] >= config('virustotal.umbral_peligroso')) {
+        if ($resultado['malicious'] >= config('virustotal.umbral_peligroso')) {
             return 'Peligroso';
         }
-        return ($r['malicious'] > 0 || $r['suspicious'] > 0) ? 'Sospechoso' : 'Seguro';
+
+        return ($resultado['malicious'] > 0 || $resultado['suspicious'] > 0)
+            ? 'Sospechoso'
+            : 'Seguro';
     }
 
-    private function filas(array $r): array
+    private function filas(array $resultado): array
     {
-        if (!$r['hallazgos']) {
+        if (!$resultado['hallazgos']) {
             return [[
-                'motor' => null, 'resultado' => 'limpio', 'categoria' => null,
+                'motor' => null,
+                'resultado' => 'limpio',
+                'categoria' => null,
                 'descripcion' => 'Ningún motor marcó la URL como riesgosa.',
             ]];
         }
-        return $r['hallazgos'];
+
+        return $resultado['hallazgos'];
     }
 }

@@ -8,17 +8,37 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Nota: make:model Analisis -m genera "analises"; aquí se corrige a "analisis".
-        Schema::create('analisis', function (Blueprint $t) {
-            $t->id();
-            $t->foreignId('usuario_id')->constrained('usuarios')->cascadeOnDelete();
-            $t->foreignId('url_id')->constrained('urls')->restrictOnDelete();
-            $t->foreignId('url_final_id')->nullable()->constrained('urls')->restrictOnDelete();
-            $t->foreignId('tipo_riesgo_id')->constrained('tipo_riesgos')->restrictOnDelete();
-            $t->foreignId('analisis_anterior_id')->nullable()->constrained('analisis')->nullOnDelete();
-            $t->timestamp('created_at')->useCurrent(); // el análisis es inmutable: sin updated_at
-            $t->index(['usuario_id', 'created_at']);
-            $t->index(['usuario_id', 'tipo_riesgo_id']);
+        Schema::create('analisis', function (Blueprint $tabla) {
+            $tabla->id('id_analisis');
+
+            $tabla->foreignId('id_usuario')
+                ->constrained('usuario', 'id_usuario')
+                ->cascadeOnDelete();
+
+            $tabla->foreignId('id_url')
+                ->constrained('url', 'id_url')
+                ->restrictOnDelete();
+
+            // Dos referencias a URL requieren nombres que distingan su función.
+            $tabla->foreignId('id_url_final')
+                ->nullable()
+                ->constrained('url', 'id_url')
+                ->restrictOnDelete();
+
+            $tabla->foreignId('id_tipo_riesgo')
+                ->constrained('tipo_riesgo', 'id_tipo_riesgo')
+                ->restrictOnDelete();
+
+            // Cada reanálisis conserva su resultado; eliminar el anterior solo desvincula la comparación.
+            $tabla->foreignId('id_analisis_anterior')
+                ->nullable()
+                ->constrained('analisis', 'id_analisis')
+                ->nullOnDelete();
+
+            $tabla->timestamp('created_at')->useCurrent();
+
+            $tabla->index(['id_usuario', 'created_at']);
+            $tabla->index(['id_usuario', 'id_tipo_riesgo']);
         });
     }
 

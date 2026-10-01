@@ -15,7 +15,7 @@ class AnalisisController extends Controller
 
     public function dashboard(Request $request)
     {
-        $recientes = $request->user()->analisis()->with(['url', 'tipoRiesgo'])->latest('id')->limit(5)->get();
+        $recientes = $request->user()->analisis()->with(['url', 'tipoRiesgo'])->latest('id_analisis')->limit(5)->get();
         return view('analisis.dashboard', compact('recientes'));
     }
 
@@ -23,10 +23,10 @@ class AnalisisController extends Controller
     {
         try {
             $analisis = $this->servicio->analizar($request->user(), $request->url);
-        } catch (AnalisisException $e) {
-            return back()->withInput()->withErrors(['url' => $e->getMessage()]);
+        } catch (AnalisisException $excepcion) {
+            return back()->withInput()->withErrors(['url' => $excepcion->getMessage()]);
         }
-        return redirect()->route('analisis.show', $analisis->id);
+        return redirect()->route('analisis.show', $analisis->getKey());
     }
 
     public function show(Request $request, int $id)
@@ -40,7 +40,7 @@ class AnalisisController extends Controller
 
     public function history(Request $request)
     {
-        $analisis = $request->user()->analisis()->with(['url', 'urlFinal', 'tipoRiesgo'])->latest('id')->simplePaginate(10);
+        $analisis = $request->user()->analisis()->with(['url', 'urlFinal', 'tipoRiesgo'])->latest('id_analisis')->simplePaginate(10);
         return view('analisis.history', compact('analisis'));
     }
 
@@ -49,10 +49,10 @@ class AnalisisController extends Controller
         $anterior = $request->user()->analisis()->with('url')->findOrFail($id);
         try {
             $nuevo = $this->servicio->analizar($request->user(), $anterior->url->url, $anterior);
-        } catch (AnalisisException $e) {
-            return redirect()->route('analisis.show', $id)->withErrors(['url' => $e->getMessage()]);
+        } catch (AnalisisException $excepcion) {
+            return redirect()->route('analisis.show', $id)->withErrors(['url' => $excepcion->getMessage()]);
         }
-        return redirect()->route('analisis.show', $nuevo->id);
+        return redirect()->route('analisis.show', $nuevo->getKey());
     }
 
     public function destroy(Request $request, int $id)

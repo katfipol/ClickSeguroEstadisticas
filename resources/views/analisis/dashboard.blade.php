@@ -26,11 +26,11 @@
 
 <section>
   <h2>Análisis recientes</h2>
-  @forelse ($recientes as $a)
-    <a class="item" href="{{ route('analisis.show', $a->id) }}">
-      <span class="badge riesgo-{{ strtolower($a->tipoRiesgo->nombre) }}">{{ $a->tipoRiesgo->nombre }}</span>
-      <span class="mono corto">{{ $a->url->url }}</span>
-      <span class="muted">{{ $a->created_at->format('d/m/Y H:i') }}</span>
+  @forelse ($recientes as $analisisReciente)
+    <a class="item" href="{{ route('analisis.show', $analisisReciente->getKey()) }}">
+      <span class="badge riesgo-{{ strtolower($analisisReciente->tipoRiesgo->nombre) }}">{{ $analisisReciente->tipoRiesgo->nombre }}</span>
+      <span class="mono corto">{{ $analisisReciente->url->url }}</span>
+      <span class="muted">{{ $analisisReciente->created_at->format('d/m/Y H:i') }}</span>
     </a>
   @empty
     <p class="muted">Aún no analizaste ninguna URL. Pega la primera arriba.</p>

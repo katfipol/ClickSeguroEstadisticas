@@ -7,15 +7,25 @@ use Illuminate\Database\Eloquent\Model;
 class DetalleAnalisis extends Model
 {
     protected $table = 'detalle_analisis';
-    protected $fillable = ['analisis_id', 'fuente_verificacion_id', 'motor', 'resultado', 'categoria', 'descripcion'];
+
+    protected $primaryKey = 'id_detalle';
+
+    protected $fillable = [
+        'id_analisis',
+        'id_fuente',
+        'motor',
+        'resultado',
+        'categoria',
+        'descripcion',
+    ];
 
     public function analisis()
     {
-        return $this->belongsTo(Analisis::class, 'analisis_id');
+        return $this->belongsTo(Analisis::class, 'id_analisis', 'id_analisis');
     }
 
     public function fuenteVerificacion()
     {
-        return $this->belongsTo(FuenteVerificacion::class, 'fuente_verificacion_id');
+        return $this->belongsTo(FuenteVerificacion::class, 'id_fuente', 'id_fuente');
     }
 }

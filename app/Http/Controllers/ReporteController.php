@@ -12,7 +12,7 @@ class ReporteController extends Controller
 {
     public function create(Request $request)
     {
-        $reportes = $request->user()->reportes()->with('url')->latest('id')->limit(10)->get();
+        $reportes = $request->user()->reportes()->with('url')->latest('id_reporte')->limit(10)->get();
         return view('reportes.create', compact('reportes'));
     }
 
@@ -20,14 +20,14 @@ class ReporteController extends Controller
     {
         try {
             $url = $servicio->registrarUrl($urls->normalizar($request->url));
-        } catch (AnalisisException $e) {
-            return back()->withInput()->withErrors(['url' => $e->getMessage()]);
+        } catch (AnalisisException $excepcion) {
+            return back()->withInput()->withErrors(['url' => $excepcion->getMessage()]);
         }
-        if ($request->user()->reportes()->where('url_id', $url->id)->exists()) {
+        if ($request->user()->reportes()->where('id_url', $url->getKey())->exists()) {
             return back()->withInput()->withErrors(['url' => 'Ya reportaste esta URL.']);
         }
         $request->user()->reportes()->create([
-            'url_id' => $url->id,
+            'id_url' => $url->getKey(),
             'motivo' => $request->motivo,
             'estado' => 'pendiente',
         ]);

@@ -8,15 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('dominios', function (Blueprint $t) {
-            $t->id();
-            $t->string('nombre', 255)->unique();
-            $t->timestamps();
+        Schema::create('dominio', function (Blueprint $tabla) {
+            $tabla->id('id_dominio');
+            $tabla->string('nombre', 255)->unique();
+            $tabla->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('dominios');
+        Schema::dropIfExists('dominio');
     }
 };
