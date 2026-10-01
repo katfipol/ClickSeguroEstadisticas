@@ -1,0 +1,54 @@
+:root{
+  --tinta:#1b2733; --fondo:#e9eef1; --papel:#fbfcfd; --linea:#c9d3da; --suave:#5b6b78;
+  --accion:#2f5d8c; --seguro:#1e7f5c; --sospechoso:#a8680f; --peligroso:#b3261e;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2{font-family:Georgia,"Iowan Old Style",serif;font-weight:700;line-height:1.2;margin:0 0 .6rem}
+h1{font-size:1.8rem} h2{font-size:1.25rem;margin-top:1.6rem}
+a{color:var(--accion)} :focus-visible{outline:3px solid var(--accion);outline-offset:2px}
+.contenedor{max-width:880px;margin:0 auto;padding:1.5rem 1rem 4rem}
+.nav{display:flex;flex-wrap:wrap;gap:.75rem 1.5rem;align-items:center;padding:.75rem 1rem;background:var(--tinta)}
+.nav a,.nav .link{color:#fff;text-decoration:none}
+.nav nav{display:flex;gap:1.25rem;flex:1;flex-wrap:wrap}
+.marca{font-family:Georgia,serif;font-weight:700;font-size:1.15rem}
+.panel{background:var(--papel);border:1px solid var(--linea);border-radius:6px;padding:1.25rem;margin:1rem 0}
+.angosto{max-width:420px;margin:3rem auto}
+label{display:block;font-weight:600;margin:.9rem 0 .3rem}
+input,textarea{width:100%;padding:.6rem .7rem;border:1px solid var(--suave);border-radius:4px;background:#fff;font:inherit;color:inherit}
+.mono{font-family:var(--mono);font-size:.92rem;word-break:break-all}
+.fila{display:flex;gap:.5rem}.fila input{flex:1}
+.btn{display:inline-block;padding:.6rem 1.1rem;border:0;border-radius:4px;background:var(--accion);color:#fff;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;margin-top:.5rem}
+.btn.sec{background:transparent;color:var(--accion);border:1px solid var(--accion)}
+.btn:disabled{opacity:.6;cursor:wait}
+.link{background:none;border:0;padding:0;font:inherit;color:var(--accion);cursor:pointer;text-decoration:underline}
+.link.peligro{color:var(--peligroso)}
+.muted{color:var(--suave)} .error{color:var(--peligroso);min-height:1.2em;margin:.4rem 0}
+.aviso.ok{background:#e0f1e9;border:1px solid var(--seguro);padding:.6rem .9rem;border-radius:4px}
+.item{display:flex;gap:.9rem;align-items:center;padding:.6rem .8rem;border-bottom:1px solid var(--linea);color:inherit;text-decoration:none;flex-wrap:wrap}
+.corto{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.badge{display:inline-block;padding:.1rem .6rem;border-radius:999px;border:1px solid var(--suave);font-size:.85rem;font-weight:600;white-space:nowrap}
+.badge.riesgo-seguro{color:var(--seguro);border-color:var(--seguro)}
+.badge.riesgo-sospechoso{color:var(--sospechoso);border-color:var(--sospechoso)}
+.badge.riesgo-peligroso{color:var(--peligroso);border-color:var(--peligroso)}
+/* El veredicto es el elemento protagonista de la app */
+.veredicto{border-left:12px solid currentColor;background:var(--papel);padding:1rem 1.25rem;border-radius:0 6px 6px 0;margin:.5rem 0 1rem}
+.veredicto .nivel{font:700 2.6rem/1.1 Georgia,serif;margin:0 0 .3rem;letter-spacing:.02em}
+.veredicto p:last-child{color:var(--tinta);margin:0}
+.veredicto.riesgo-seguro{color:var(--seguro)}.veredicto.riesgo-sospechoso{color:var(--sospechoso)}.veredicto.riesgo-peligroso{color:var(--peligroso)}
+.datos{display:grid;grid-template-columns:max-content 1fr;gap:.5rem 1.25rem;margin:0}
+.datos dt{font-weight:600;color:var(--suave)}.datos dd{margin:0}
+.tabla-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:var(--papel)}
+th,td{text-align:left;padding:.55rem .7rem;border-bottom:1px solid var(--linea);vertical-align:top}
+th{font-size:.9rem;color:var(--suave)}
+.acciones,.acciones-fila{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
+.acciones form,.acciones-fila form{margin:0}
+.paginas{display:flex;gap:1rem;margin-top:1rem}
+.cifras{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin:1rem 0}
+.cifras div{background:var(--papel);border:1px solid var(--linea);border-radius:6px;padding:1rem}
+.cifras dt{color:var(--suave);font-size:.9rem}.cifras dd{margin:0;font:700 2.2rem Georgia,serif}
+.cifras .riesgo-seguro dd{color:var(--seguro)}.cifras .riesgo-sospechoso dd{color:var(--sospechoso)}.cifras .riesgo-peligroso dd{color:var(--peligroso)}
+@media (max-width:560px){.datos{grid-template-columns:1fr}.veredicto .nivel{font-size:2rem}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

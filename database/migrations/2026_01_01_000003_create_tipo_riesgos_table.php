@@ -1,0 +1,23 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('tipo_riesgos', function (Blueprint $t) {
+            $t->id();
+            $t->string('nombre', 30)->unique();
+            $t->string('descripcion', 255);
+            $t->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tipo_riesgos');
+    }
+};
