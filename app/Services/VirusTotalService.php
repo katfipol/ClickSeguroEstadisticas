@@ -58,6 +58,11 @@ class VirusTotalService
     private function transformar(array $attr): array
     {
         $stats = $attr['stats'] ?? [];
+if ($stats === []) {
+    throw new AnalisisException(
+        'El servicio de análisis no devolvió datos suficientes. Intenta de nuevo.'
+    );
+}
         $hallazgos = [];
         foreach (($attr['results'] ?? []) as $nombre => $r) {
             $cat = $r['category'] ?? '';
