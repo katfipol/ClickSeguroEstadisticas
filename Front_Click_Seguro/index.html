@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
+    <title>Login - Click Seguro</title>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="scan-line"></div>
+
+    <div class="auth-wrapper">
+        <div class="left-panel">
+            <div class="left-panel-content">
+                <div class="logo-big">
+                    <img src="images/logo.svg" alt="Click Seguro">
+                </div>
+                <h1>CLICK SEGURO</h1>
+                <div class="subtitle">Sistema de Protección contra Phishing</div>
+                <p>Analiza URLs y archivos en tiempo real antes de hacer clic o abrirlos. Tu escudo de seguridad contra enlaces maliciosos, códigos QR sospechosos y robo de credenciales.</p>
+                <div class="features">
+                    <div class="feature">
+                        <svg class="icono-feature" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                        Análisis Real-time
+                    </div>
+                    <div class="feature">
+                        <svg class="icono-feature" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                        Multiplataforma
+                    </div>
+                    <div class="feature">
+                        <svg class="icono-feature" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        Detección VirusTotal
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="login-box">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <img src="images/logo.svg" alt="Click Seguro">
+                    </div>
+                    <h2>ACCESO AL SISTEMA</h2>
+                    <p>Inicia sesión para continuar</p>
+                </div>
+
+                <div id="error-message" class="alert alert-error" style="display:none;"></div>
+
+                <form id="login-form" novalidate>
+                    <div class="form-group">
+                        <label for="email">> Correo Electrónico</label>
+                        <input type="email" id="email" name="email" placeholder="usuario@clickseguro.com" required autofocus>
+                        <span class="error" id="email-error"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">> Contraseña</label>
+                        <input type="password" id="password" name="password" placeholder="Ingresa tu contraseña" required>
+                        <span class="error" id="password-error"></span>
+                    </div>
+
+                    <button type="submit" class="btn-login" style="width:100%; padding:1rem; background:var(--cyber-green); color:#000; border:none; border-radius:4px; font-family:var(--font-display); font-weight:700; cursor:pointer;">INICIAR SESIÓN</button>
+                </form>
+
+                <div class="register-link" style="margin-top:1.5rem; text-align:center;">
+                    ¿Sin acceso? <a href="register.html" style="color:var(--cyber-cyan); text-decoration:none;">SOLICITAR CUENTA / REGISTRO</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Auth, UI } from './js/api.js';
+
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('error-message');
+            
+            // Validación
+            if (!email || !password) {
+                errorMsg.textContent = 'Correo y contraseña son obligatorios';
+                errorMsg.style.display = 'block';
+                return;
+            }
+            const submitBtn = this.querySelector('button[type="submit"]');
+            UI.lockButton(submitBtn, 'Verificando...');
+            try {
+                const response = await Auth.login(email, password);
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Guardar usuario en localStorage
+                    localStorage.setItem('user', JSON.stringify(data.usuario));
+                    // Redirigir al dashboard
+                    window.location.href = 'dashboard.html';
+                } else {
+                    UI.unlockButton(submitBtn);
+                    errorMsg.textContent = data.message || 'Credenciales incorrectas';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (error) {
+                UI.unlockButton(submitBtn);
+                errorMsg.textContent = 'Error de conexión con el servidor';
+                errorMsg.style.display = 'block';
+                console.error(error);
+            }
+        });
+    </script>
+</body>
+</html>
