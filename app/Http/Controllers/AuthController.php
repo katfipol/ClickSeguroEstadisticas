@@ -1,49 +1,90 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers; 
 
+use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
+use App\Http\Resources\UsuarioResource;
 use App\Models\Usuario;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Symfony\Component\HttpFoundation\Response;
 
 class AuthController extends Controller
 {
-    public function showLogin() { return view('auth.login'); }
-
-    public function login(Request $request)
+    /**
+     * Inicia sesión y emite un token Bearer de Sanctum (HU-01).
+     */
+    public function login(LoginRequest $request): JsonResponse
     {
-        $datos = $request->validate(['email' => 'required|email', 'password' => 'required']);
-        if (Auth::attempt($datos)) {
-            $request->session()->regenerate();
-            return redirect()->intended('dashboard');
+        $usuario = Usuario::where('email', $request->email)->first();
+
+        if (!$usuario || !Hash::check($request->password, $usuario->password)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Correo o contraseña incorrectos.',
+            ], Response::HTTP_UNAUTHORIZED); // 401
         }
-        return back()->withErrors(['email' => 'Correo o contraseña incorrectos.'])->onlyInput('email');
+
+        $token = $usuario->createToken('click-seguro-api')->plainTextToken;
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Inicio de sesión exitoso.',
+            'data'    => [
+                'token'   => $token,
+                'usuario' => new UsuarioResource($usuario),
+            ],
+        ], Response::HTTP_OK); // 200
     }
 
-    public function showRegister() { return view('auth.register'); }
-
-    public function register(RegisterRequest $request)
+    /**
+     * Registra un nuevo usuario validando que la contraseña no esté filtrada (HU-01, HU-15).
+     */
+    public function register(RegisterRequest $request): JsonResponse
     {
-        $datos = $request->validated();
         $usuario = Usuario::create([
-            'nombre'   => $datos['nombre'],
-            'apellido_paterno' => $datos['apellido_paterno'] ?? null,
-            'apellido_materno' => $datos['apellido_materno'] ?? null,
-            'email'    => $datos['email'],
-            'password' => Hash::make($datos['password']),
+            'nombre'           => $request->nombre,
+            'apellido_paterno' => $request->apellido_paterno,
+            'apellido_materno' => $request->apellido_materno,
+            'email'            => $request->email,
+            'password'         => Hash::make($request->password),
         ]);
-        Auth::login($usuario);
-        $request->session()->regenerate();
-        return redirect()->route('dashboard');
+
+        $token = $usuario->createToken('click-seguro-api')->plainTextToken;
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Cuenta creada exitosamente.',
+            'data'    => [
+                'token'   => $token,
+                'usuario' => new UsuarioResource($usuario),
+            ],
+        ], Response::HTTP_CREATED); // 201
     }
 
-    public function logout(Request $request)
+    /**
+     * Devuelve el perfil del usuario autenticado actualmente.
+     */
+    public function me(Request $request): JsonResponse
     {
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-        return redirect()->route('login');
+        return response()->json([
+            'status' => 'success',
+            'data'   => new UsuarioResource($request->user()),
+        ], Response::HTTP_OK);
+    }
+
+    /**
+     * Revoca el token Bearer que se utilizó en la petición actual.
+     */
+    public function logout(Request $request): JsonResponse
+    {
+        $request->user()->currentAccessToken()?->delete();
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Sesión cerrada correctamente.',
+        ], Response::HTTP_OK);
     }
 }
