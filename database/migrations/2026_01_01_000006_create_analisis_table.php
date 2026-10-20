@@ -19,21 +19,28 @@ return new class extends Migration
                 ->constrained('url', 'id_url')
                 ->restrictOnDelete();
 
-            // Dos referencias a URL requieren nombres que distingan su función.
             $tabla->foreignId('id_url_final')
                 ->nullable()
                 ->constrained('url', 'id_url')
                 ->restrictOnDelete();
 
             $tabla->foreignId('id_tipo_riesgo')
+                ->nullable()
                 ->constrained('tipo_riesgo', 'id_tipo_riesgo')
                 ->restrictOnDelete();
 
-            // Cada reanálisis conserva su resultado; eliminar el anterior solo desvincula la comparación.
             $tabla->foreignId('id_analisis_anterior')
                 ->nullable()
                 ->constrained('analisis', 'id_analisis')
                 ->nullOnDelete();
+
+            $tabla->foreignId('id_documento')
+                ->nullable()
+                ->constrained('documento', 'id_documento')
+                ->nullOnDelete();
+
+            $tabla->string('estado', 20)->default('pendiente');
+            $tabla->string('error', 255)->nullable();
 
             $tabla->timestamp('created_at')->useCurrent();
 

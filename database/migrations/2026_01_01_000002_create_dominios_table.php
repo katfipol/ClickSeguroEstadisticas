@@ -11,6 +11,12 @@ return new class extends Migration
         Schema::create('dominio', function (Blueprint $tabla) {
             $tabla->id('id_dominio');
             $tabla->string('nombre', 255)->unique();
+            $tabla->date('fecha_creacion')->nullable();
+            $tabla->string('registrador', 150)->nullable();
+            $tabla->string('ip', 45)->nullable();
+            $tabla->string('pais', 2)->nullable();
+            $tabla->integer('reputacion')->nullable();
+            $tabla->timestamp('consultado_at')->nullable();
             $tabla->timestamps();
         });
     }
