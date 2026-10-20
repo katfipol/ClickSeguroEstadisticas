@@ -10,13 +10,10 @@ return new class extends Migration
     {
         Schema::create('url', function (Blueprint $tabla) {
             $tabla->id('id_url');
-
             $tabla->foreignId('id_dominio')
                 ->constrained('dominio', 'id_dominio')
                 ->restrictOnDelete();
-
             $tabla->string('url', 2048);
-            // El hash permite comprobar unicidad sin indexar la dirección completa.
             $tabla->char('url_hash', 64)->unique();
             $tabla->timestamps();
         });

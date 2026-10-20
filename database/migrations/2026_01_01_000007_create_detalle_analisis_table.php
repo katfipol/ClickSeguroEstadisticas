@@ -19,7 +19,6 @@ return new class extends Migration
                 ->constrained('fuente_verificacion', 'id_fuente')
                 ->restrictOnDelete();
 
-            // Un motor nulo distingue el resumen generado por la aplicación.
             $tabla->string('motor', 100)->nullable();
             $tabla->string('resultado', 20);
             $tabla->string('categoria', 100)->nullable();

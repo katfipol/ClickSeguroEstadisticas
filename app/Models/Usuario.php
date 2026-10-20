@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Laravel\Sanctum\HasApiTokens;
 
 class Usuario extends Authenticatable
 {
+    use HasApiTokens;
+
     protected $table = 'usuario';
 
     protected $primaryKey = 'id_usuario';
@@ -18,7 +22,9 @@ class Usuario extends Authenticatable
         'password',
     ];
 
-    protected $hidden = ['password'];
+    protected $hidden = [
+        'password',
+    ];
 
     public function getNombreCompletoAttribute(): string
     {
@@ -30,19 +36,33 @@ class Usuario extends Authenticatable
         ));
     }
 
-    // El acceso persistente de "recordarme" no forma parte del alcance actual.
-    public function getRememberTokenName()
+    public function getRememberTokenName(): string
     {
         return '';
     }
 
-    public function analisis()
+    public function setRememberToken($value): void
+    {
+        // No se utiliza remember_token en autenticación stateless por API
+    }
+
+    public function analisis(): HasMany
     {
         return $this->hasMany(Analisis::class, 'id_usuario', 'id_usuario');
     }
 
-    public function reportes()
+    public function reportes(): HasMany
     {
         return $this->hasMany(Reporte::class, 'id_usuario', 'id_usuario');
+    }
+
+    public function documentos(): HasMany
+    {
+        return $this->hasMany(Documento::class, 'id_usuario', 'id_usuario');
+    }
+
+    public function archivosVerificados(): HasMany
+    {
+        return $this->hasMany(ArchivoVerificado::class, 'id_usuario', 'id_usuario');
     }
 }

@@ -12,6 +12,11 @@ class Url extends Model
 
     protected $fillable = ['id_dominio', 'url', 'url_hash'];
 
+    public function getIdAttribute()
+    {
+        return $this->getKey();
+    }
+
     public function dominio()
     {
         return $this->belongsTo(Dominio::class, 'id_dominio', 'id_dominio');

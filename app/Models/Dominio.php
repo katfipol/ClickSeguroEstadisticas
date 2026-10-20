@@ -10,7 +10,25 @@ class Dominio extends Model
 
     protected $primaryKey = 'id_dominio';
 
-    protected $fillable = ['nombre'];
+    protected $fillable = [
+        'nombre',
+        'fecha_creacion',
+        'registrador',
+        'ip',
+        'pais',
+        'reputacion',
+        'consultado_at',
+    ];
+
+    public function getIdAttribute()
+    {
+        return $this->getKey();
+    }
+
+    protected $casts = [
+        'fecha_creacion' => 'date',
+        'consultado_at'  => 'datetime',
+    ];
 
     public function urls()
     {
