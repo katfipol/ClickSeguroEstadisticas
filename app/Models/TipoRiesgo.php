@@ -12,8 +12,18 @@ class TipoRiesgo extends Model
 
     protected $fillable = ['nombre', 'descripcion'];
 
+    public function getIdAttribute()
+    {
+        return $this->getKey();
+    }
+
     public function analisis()
     {
         return $this->hasMany(Analisis::class, 'id_tipo_riesgo', 'id_tipo_riesgo');
+    }
+
+    public function archivosVerificados()
+    {
+        return $this->hasMany(ArchivoVerificado::class, 'id_tipo_riesgo', 'id_tipo_riesgo');
     }
 }

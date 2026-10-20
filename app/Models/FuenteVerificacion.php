@@ -16,4 +16,9 @@ class FuenteVerificacion extends Model
     {
         return $this->hasMany(DetalleAnalisis::class, 'id_fuente', 'id_fuente');
     }
+
+    public function detallesArchivo()
+    {
+        return $this->hasMany(DetalleArchivo::class, 'id_fuente', 'id_fuente');
+    }
 }
