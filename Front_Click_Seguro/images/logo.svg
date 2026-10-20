@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- Outer shield shape -->
+  <path d="M24 2L6 10v14c0 11.1 7.7 21.5 18 24 10.3-2.5 18-12.9 18-24V10L24 2z" fill="rgba(0,255,65,0.08)" stroke="#00ff41" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Inner shield accent -->
+  <path d="M24 6L10 12.5v10.5c0 8.9 6.1 17.2 14 19.2 7.9-2 14-10.3 14-19.2V12.5L24 6z" fill="rgba(0,255,65,0.05)" stroke="#00ff41" stroke-width="1" stroke-linejoin="round" opacity="0.5"/>
+  <!-- Checkmark / verification symbol -->
+  <path d="M16 24l5.5 5.5L32 18" stroke="#00ff41" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Digital scan lines -->
+  <line x1="14" y1="15" x2="20" y2="15" stroke="#00ff41" stroke-width="0.8" opacity="0.3"/>
+  <line x1="28" y1="15" x2="34" y2="15" stroke="#00ff41" stroke-width="0.8" opacity="0.3"/>
+  <line x1="14" y1="33" x2="20" y2="33" stroke="#00ff41" stroke-width="0.8" opacity="0.3"/>
+  <line x1="28" y1="33" x2="34" y2="33" stroke="#00ff41" stroke-width="0.8" opacity="0.3"/>
+</svg>
