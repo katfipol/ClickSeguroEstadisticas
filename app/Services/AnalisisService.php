@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Contracts\EscaneoSeguridadInterface;
+use App\Jobs\ProcesarAnalisis;
 use App\Models\Analisis;
 use App\Models\Dominio;
 use App\Models\FuenteVerificacion;
@@ -12,85 +14,96 @@ use Illuminate\Support\Facades\DB;
 
 class AnalisisService
 {
-    public function __construct(private UrlService $urls, private VirusTotalService $virusTotal)
-    {
+    public function __construct(
+        private UrlService $urls,
+        private EscaneoSeguridadInterface $escaneoService
+    ) {
     }
 
     public function registrarUrl(string $normalizada): Url
     {
-        $dominio = Dominio::firstOrCreate([
-            'nombre' => $this->urls->host($normalizada),
-        ]);
+        $dominio = Dominio::firstOrCreate(['nombre' => $this->urls->host($normalizada)]);
 
         return Url::firstOrCreate(
             ['url_hash' => hash('sha256', $normalizada)],
-            ['id_dominio' => $dominio->getKey(), 'url' => $normalizada]
+            ['id_dominio' => $dominio->id_dominio, 'url' => $normalizada]
         );
     }
 
-    // Cada reanálisis crea otro registro para conservar el resultado anterior.
-    public function analizar(Usuario $usuario, string $entrada, ?Analisis $anterior = null): Analisis
+    public function crearPendiente(Usuario $usuario, string $entrada, ?Analisis $anterior = null, ?int $documentoId = null): Analisis
     {
-        $urlNormalizada = $this->urls->normalizar($entrada);
-        $url = $this->registrarUrl($urlNormalizada);
+        $url = $this->registrarUrl($this->urls->normalizar($entrada));
 
-        $urlFinal = null;
-        $urlObjetivo = $urlNormalizada;
+        $analisis = Analisis::create([
+            'id_usuario'           => $usuario->id_usuario,
+            'id_url'               => $url->id_url,
+            'id_analisis_anterior' => $anterior?->id_analisis,
+            'id_documento'         => $documentoId,
+            'estado'               => 'pendiente',
+        ]);
 
-        if ($this->urls->esAcortado($urlNormalizada)) {
-            $urlDestino = $this->urls->resolverFinal($urlNormalizada);
+       ProcesarAnalisis::dispatchAfterResponse($analisis->id_analisis);
 
-            if ($urlDestino !== $urlNormalizada) {
-                $urlFinal = $this->registrarUrl($urlDestino);
-                $urlObjetivo = $urlDestino;
+        return $analisis->load('url');
+    }
+
+    public function procesar(Analisis $analisis): Analisis
+    {
+        $normal = $analisis->url->url;
+        $final = null;
+        $objetivo = $normal;
+
+        if ($this->urls->esAcortado($normal)) {
+            $destino = $this->urls->resolverFinal($normal);
+            if ($destino !== $normal) {
+                $final = $this->registrarUrl($destino);
+                $objetivo = $destino;
             }
         }
 
-        $resultado = $this->virusTotal->analizar($urlObjetivo, $anterior !== null);
+        $resultado = $this->escaneoService->analizar($objetivo, $analisis->id_analisis_anterior !== null);
         $riesgo = TipoRiesgo::where('nombre', $this->clasificar($resultado))->firstOrFail();
         $fuente = FuenteVerificacion::where('nombre', 'VirusTotal')->firstOrFail();
 
-        return DB::transaction(function () use ($usuario, $url, $urlFinal, $riesgo, $fuente, $resultado, $anterior) {
-            $analisis = Analisis::create([
-                'id_usuario' => $usuario->getKey(),
-                'id_url' => $url->getKey(),
-                'id_url_final' => $urlFinal?->getKey(),
-                'id_tipo_riesgo' => $riesgo->getKey(),
-                'id_analisis_anterior' => $anterior?->getKey(),
+        DB::transaction(function () use ($analisis, $final, $riesgo, $fuente, $resultado) {
+            $analisis->detalles()->delete();
+            $analisis->update([
+                'id_url_final'   => $final?->id_url,
+                'id_tipo_riesgo' => $riesgo->id_tipo_riesgo,
+                'estado'         => 'completado',
+                'error'          => null,
             ]);
 
-            foreach ($this->filas($resultado) as $detalle) {
-                $analisis->detalles()->create($detalle + [
-                    'id_fuente' => $fuente->getKey(),
-                ]);
-            }
-
-            return $analisis;
+            $detalles = array_map(
+                fn (array $fila) => $fila + ['id_fuente' => $fuente->id_fuente],
+                $this->filas($resultado)
+            );
+            $analisis->detalles()->createMany($detalles);
         });
+
+        return $analisis->refresh();
     }
 
-    public function clasificar(array $resultado): string
+    public function clasificar(array $r): string
     {
-        if ($resultado['malicious'] >= config('virustotal.umbral_peligroso')) {
+        if ($r['malicious'] >= config('virustotal.umbral_peligroso')) {
             return 'Peligroso';
         }
 
-        return ($resultado['malicious'] > 0 || $resultado['suspicious'] > 0)
-            ? 'Sospechoso'
-            : 'Seguro';
+        return ($r['malicious'] > 0 || $r['suspicious'] > 0) ? 'Sospechoso' : 'Seguro';
     }
 
-    private function filas(array $resultado): array
+    public function filas(array $r): array
     {
-        if (!$resultado['hallazgos']) {
+        if (!$r['hallazgos']) {
             return [[
-                'motor' => null,
-                'resultado' => 'limpio',
-                'categoria' => null,
+                'motor'       => null,
+                'resultado'   => 'limpio',
+                'categoria'   => null,
                 'descripcion' => 'Ningún motor marcó la URL como riesgosa.',
             ]];
         }
 
-        return $resultado['hallazgos'];
+        return $r['hallazgos'];
     }
 }

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Click Seguro</title>
+    <link rel="stylesheet" href="css/app.css">
+    <!-- Librería para decodificar códigos QR en el navegador (HU-08) -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="scan-line"></div>
+
+    <header class="nav">
+        <a class="marca" href="dashboard.html">
+            <img src="images/logo.svg" alt="Click Seguro" class="marca-logo">
+            CLICK SEGURO
+        </a>
+        <nav>
+            <a href="dashboard.html" class="active">ENLACES</a>
+            <a href="archivos.html">ARCHIVOS</a>
+            <a href="documentos.html">DOCUMENTOS</a>
+            <a href="dominios.html">DOMINIOS</a>
+            <a href="passwords.html">CONTRASEÑAS</a>
+            <a href="history.html">HISTORIAL</a>
+            <a href="estadisticas.html">MIS STATS</a>
+            <a href="reportar.html">REPORTAR</a>
+        </nav>
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <span class="nav-usuario" id="user-name">Usuario</span>
+            <button id="logout-btn" class="btn peligro" style="font-size:0.75rem; padding:4px 10px;">SALIR</button>
+        </div>
+    </header>
+
+    <main class="contenedor">
+        <div style="margin-bottom: 1.75rem; padding-bottom: 1rem; border-bottom: 1px solid var(--cyber-border);">
+            <h2 id="welcome-user" style="font-family: var(--font-display); font-size: 2rem; color: var(--cyber-cyan); letter-spacing: 1px; margin: 0;">
+                ¡Bienvenido!
+            </h2>
+        </div>
+        <h1 style="font-family:var(--font-display); color:var(--cyber-green); margin-bottom:0.5rem;">Analizar una URL</h1>
+        <p class="muted" style="margin-bottom:2rem;">Pega un enlace para saber si es seguro antes de abrirlo. Nunca lo abrimos por ti.</p>
+
+        <section class="panel">
+            <form id="url-form" novalidate>
+                <label for="url">URL a analizar</label>
+                <div class="fila">
+                    <input id="url" name="url" class="mono" placeholder="https://ejemplo.com/ruta" autocomplete="off" required style="flex:1;">
+                    <button type="button" id="paste-btn" class="btn sec">Pegar</button>
+                    <button type="button" id="qr-btn" class="btn sec">Cargar QR</button>
+                    <input type="file" id="qr-input" accept="image/*" class="file-input-hidden">
+                </div>
+                <div id="form-error" class="error" style="margin-top:0.5rem;"></div>
+                <button type="submit" class="btn" style="margin-top:1rem;">Analizar</button>
+            </form>
+
+            <div id="loading-state" class="panel" style="display:none; text-align:center; margin-top:1rem; border:1px solid var(--cyber-green);">
+                <p style="color:var(--cyber-green); font-family:var(--font-display);"> ANALIZANDO URL...</p>
+                <div style="background:#030804; height:12px; border-radius:6px; overflow:hidden; margin:1rem 0; border:1px solid var(--cyber-cyan);">
+                    <div id="progress-bar" style="background:var(--cyber-green); width:0%; height:100%; transition:width 0.5s;"></div>
+                </div>
+                <p class="muted">Tiempo: <span id="timer" style="color:var(--cyber-cyan); font-weight:bold;">0</span>s</p>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>Análisis recientes</h2>
+            <div id="recent-analyses">
+                <p class="muted">Cargando...</p>
+            </div>
+        </section>
+    </main>
+
+    <script type="module">
+        import { Auth, Analyses, UI } from './js/api.js';
+
+        // Verificar autenticación
+        async function checkAuth() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) {
+                window.location.href = 'index.html';
+                return;
+            }
+            document.getElementById('user-name').textContent = user.nombre;
+            document.getElementById('welcome-user').textContent = `¡Bienvenido, ${user.nombre}!`;
+        }
+
+        // Cargar análisis recientes
+        async function loadRecentAnalyses() {
+            try {
+                const data = await Analyses.getAll();
+                const container = document.getElementById('recent-analyses');
+                
+                if (data.length === 0) {
+                    container.innerHTML = '<p class="muted">Aún no analizaste ninguna URL.</p>';
+                    return;
+                }
+
+                let html = '';
+                data.slice(0, 5).forEach(analysis => {
+                    const riesgoClass = analysis.tipo_riesgo ? `riesgo-${analysis.tipo_riesgo.nombre.toLowerCase()}` : '';
+                    const riesgoText = analysis.tipo_riesgo ? analysis.tipo_riesgo.nombre : 'En curso';
+                    
+                    html += `
+                        <a href="analysis.html?id=${analysis.id_analisis}" class="item" style="text-decoration:none; color:inherit;">
+                            <span class="badge ${riesgoClass}">${riesgoText}</span>
+                            <span class="mono" style="flex:1;">${analysis.url.url}</span>
+                            <span class="muted">${new Date(analysis.created_at).toLocaleString()}</span>
+                        </a>
+                    `;
+                });
+                
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Error cargando análisis:', error);
+            }
+        }
+
+        // Formulario de análisis
+        document.getElementById('url-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const urlInput = document.getElementById('url');
+            const url = urlInput.value.trim();
+            const errorDiv = document.getElementById('form-error');
+            const loadingState = document.getElementById('loading-state');
+            const progressBar = document.getElementById('progress-bar');
+            const timerSpan = document.getElementById('timer');
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const pasteBtn = document.getElementById('paste-btn');
+            const qrBtn = document.getElementById('qr-btn');
+            
+            errorDiv.style.color = 'var(--cyber-red)';
+            if (!url) {
+            urlInput.classList.add('input-error');
+            errorDiv.textContent = 'Ingresa o pega una URL para analizar.';
+            return;
+        }
+
+            // Bloquear botones para evitar múltiples envíos
+            UI.lockButton(submitBtn, 'Analizando...');
+            pasteBtn.disabled = true;
+            qrBtn.disabled = true;
+
+            loadingState.style.display = 'block';
+            errorDiv.textContent = '';
+            
+            let seconds = 0;
+            const timer = setInterval(() => {
+                seconds++;
+                timerSpan.textContent = seconds;
+                const progress = Math.min((seconds / 20) * 90, 90);
+                progressBar.style.width = progress + '%';
+            }, 1000);
+
+            try {
+                const analysis = await Analyses.create(url);
+                
+                const checkStatus = async () => {
+                    const status = await Analyses.getStatus(analysis.id_analisis);
+                    
+                    if (status.terminado) {
+                        clearInterval(timer);
+                        progressBar.style.width = '100%';
+                        setTimeout(() => {
+                            window.location.href = `analysis.html?id=${analysis.id_analisis}`;
+                        }, 500);
+                    } else {
+                        setTimeout(checkStatus, 2000);
+                    }
+                };
+                
+                setTimeout(checkStatus, 2000);
+                
+            } catch (error) {
+                clearInterval(timer);
+                loadingState.style.display = 'none';
+                errorDiv.textContent = error.message || 'Error al analizar la URL';
+                UI.unlockButton(submitBtn);
+                pasteBtn.disabled = false;
+                qrBtn.disabled = false;
+            }
+        });
+
+        // Botón pegar (HU-02)
+        document.getElementById('paste-btn').addEventListener('click', async () => {
+            const urlInput = document.getElementById('url');
+            const errorDiv = document.getElementById('form-error');
+            try {
+                const text = (await navigator.clipboard.readText()).trim();
+                if (!text) {
+                    urlInput.classList.add('input-error');
+                    errorDiv.style.color = 'var(--cyber-red)';
+                    errorDiv.textContent = 'Tu portapapeles está vacío.';
+                    return;
+                }
+
+                const esUrlValida = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z0-9-]{2,}(\/.*)?$/i.test(text);
+                if (!esUrlValida) {
+                    urlInput.classList.add('input-error');
+                    errorDiv.style.color = 'var(--cyber-red)';
+                    errorDiv.textContent = 'El texto copiado en tu portapapeles no es una URL válida.';
+                    return;
+                }
+
+                urlInput.classList.remove('input-error');
+                urlInput.value = text;
+                errorDiv.textContent = '';
+            } catch (err) {
+                await UI.alert('Portapapeles', 'No se pudo leer el portapapeles. Verifica los permisos de tu navegador.');
+            }
+        });
+
+        // Botón Cargar QR (HU-08)
+        const qrBtn = document.getElementById('qr-btn');
+        const qrInput = document.getElementById('qr-input');
+        const errorDiv = document.getElementById('form-error');
+
+        qrBtn.addEventListener('click', () => qrInput.click());
+
+        qrInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (!file) return;
+
+            UI.lockButton(qrBtn, 'Leyendo QR...');
+            errorDiv.textContent = '';
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0, img.width, img.height);
+
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const qrCode = window.jsQR(imageData.data, imageData.width, imageData.height);
+
+                    UI.unlockButton(qrBtn);
+                    qrInput.value = ''; // Limpiar para permitir subir la misma imagen de nuevo si se desea
+
+                    if (!qrCode || !qrCode.data) {
+                        errorDiv.style.color = 'var(--cyber-red)';
+                        errorDiv.textContent = 'No se detectó un código QR legible en la imagen seleccionada.';
+                        return;
+                    }
+
+                    const contenido = qrCode.data.trim();
+                    // Validar que el texto extraído del QR tenga formato de URL o dominio (HU-08)
+                    const esUrlValida = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z0-9-]{2,}(\/.*)?$/i.test(contenido);
+
+                    if (!esUrlValida) {
+                        errorDiv.style.color = 'var(--cyber-red)';
+                        errorDiv.textContent = `El código QR fue leído ("${contenido.substring(0, 40)}"), pero no contiene una URL válida.`;
+                        return;
+                    }
+
+                    // Colocar la URL en el campo sin abrirla automáticamente (HU-08)
+                    document.getElementById('url').value = contenido;
+                    errorDiv.style.color = 'var(--cyber-green)';
+                    errorDiv.textContent = '✓ URL extraída del código QR correctamente. Haz clic en Analizar.';
+                };
+                img.onerror = function() {
+                    UI.unlockButton(qrBtn);
+                    errorDiv.style.color = 'var(--cyber-red)';
+                    errorDiv.textContent = 'El archivo seleccionado no es una imagen válida.';
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try {
+                await Auth.logout();
+            } catch (e) {
+                console.error(e);
+            } finally {
+                localStorage.removeItem('user');
+                window.location.href = 'index.html';
+            }
+        });
+
+        // Inicializar
+        checkAuth();
+        loadRecentAnalyses();
+    </script>
+</body>
+</html>

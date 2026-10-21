@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - Click Seguro</title>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="scan-line"></div>
+
+    <div class="auth-wrapper">
+        <div class="left-panel">
+            <div class="left-panel-content">
+                <div class="logo-big">
+                    <img src="images/logo.svg" alt="Click Seguro">
+                </div>
+                <h1>CLICK SEGURO</h1>
+                <div class="subtitle">Sistema de Protección contra Phishing</div>
+                <p>Crea tu cuenta para acceder al escudo de seguridad más avanzado. Analiza URLs, verifica archivos por huella SHA-256, inspecciona documentos PDF y audita tus contraseñas contra filtraciones globales.</p>
+                <div class="features">
+                    <div class="feature">
+                        <svg class="icono-feature" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                        Cifrado Seguro
+                    </div>
+                    <div class="feature">
+                        <svg class="icono-feature" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        Análisis Real-time
+                    </div>
+                    <div class="feature">
+                        <svg class="icono-feature" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+                        Multiplataforma
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="register-box">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <img src="images/logo.svg" alt="Click Seguro">
+                    </div>
+                    <h2>CREAR CUENTA</h2>
+                    <p>Registro de nuevo usuario</p>
+                </div>
+
+                <div id="error-message" class="alert alert-error" style="display:none;"></div>
+
+                <form id="register-form" novalidate>
+                    <div class="form-group">
+                        <label for="nombre">> Nombre <span style="color:var(--cyber-red);">*</span></label>
+                        <input type="text" id="nombre" name="nombre" placeholder="Ej: Mateo" required autofocus>
+                    </div>
+
+                    <div class="fila" style="gap:1rem;">
+                        <div class="form-group" style="flex:1;">
+                            <label for="apellido_paterno">> Ap. Paterno</label>
+                            <input type="text" id="apellido_paterno" name="apellido_paterno" placeholder="Ej: González">
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label for="apellido_materno">> Ap. Materno</label>
+                            <input type="text" id="apellido_materno" name="apellido_materno" placeholder="Ej: López">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">> Correo Electrónico <span style="color:var(--cyber-red);">*</span></label>
+                        <input type="email" id="email" name="email" placeholder="usuario@clickseguro.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">> Contraseña <span style="color:var(--cyber-red);">*</span></label>
+                        <input type="password" id="password" name="password" placeholder="Mínimo 8 caracteres" required>
+                        <div class="medidor" style="margin-top:0.5rem; background:rgba(0,0,0,0.6); height:4px; border-radius:2px;">
+                            <div id="strength-bar" style="width:0%; height:100%; background:var(--cyber-red); border-radius:2px; transition:all 0.3s;"></div>
+                        </div>
+                        <p id="strength-text" style="font-size:0.75rem; color:var(--cyber-muted); margin-top:0.25rem;">SEGURIDAD: NULA</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password_confirmation">> Confirmar Contraseña <span style="color:var(--cyber-red);">*</span></label>
+                        <input type="password" id="password_confirmation" name="password_confirmation" placeholder="Repite tu contraseña" required>
+                    </div>
+
+                    <button type="submit" class="btn" style="width:100%; padding:1rem;">REGISTRAR USUARIO</button>
+                </form>
+
+                <div class="login-link" style="margin-top:1.5rem; text-align:center;">
+                    ¿Ya tienes acceso? <a href="index.html" style="color:var(--cyber-cyan); text-decoration:none;">INICIAR SESIÓN</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Auth, UI } from './js/api.js';
+
+        // Medidor de fortaleza
+        const pwd = document.getElementById('password');
+        const bar = document.getElementById('strength-bar');
+        const txt = document.getElementById('strength-text');
+
+        pwd.addEventListener('input', function() {
+            const val = this.value;
+            if (!val) {
+                bar.style.width = '0%';
+                txt.textContent = 'SEGURIDAD: NULA';
+                txt.style.color = 'var(--cyber-red)';
+                return;
+            }
+            let score = 0;
+            if (val.length >= 8) score++;
+            if (val.length >= 12) score++;
+            if (/[A-Z]/.test(val)) score++;
+            if (/[0-9]/.test(val)) score++;
+            if (/[^A-Za-z0-9]/.test(val)) score++;
+
+            const pct = Math.min(100, Math.round((score / 5) * 100));
+            bar.style.width = pct + '%';
+
+            if (score <= 2) {
+                bar.style.background = 'var(--cyber-red)';
+                txt.style.color = 'var(--cyber-red)';
+                txt.textContent = `SEGURIDAD BAJA (${pct}%)`;
+            } else if (score <= 3) {
+                bar.style.background = 'var(--cyber-yellow)';
+                txt.style.color = 'var(--cyber-yellow)';
+                txt.textContent = `SEGURIDAD MEDIA (${pct}%)`;
+            } else {
+                bar.style.background = 'var(--cyber-green)';
+                txt.style.color = 'var(--cyber-green)';
+                txt.textContent = `SEGURIDAD ALTA (${pct}%)`;
+            }
+        });
+
+        // Registro
+        document.getElementById('register-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const errorMsg = document.getElementById('error-message');
+            const userData = {
+                nombre: document.getElementById('nombre').value.trim(),
+                apellido_paterno: document.getElementById('apellido_paterno').value.trim(),
+                apellido_materno: document.getElementById('apellido_materno').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                password: document.getElementById('password').value,
+                password_confirmation: document.getElementById('password_confirmation').value
+            };
+
+            if (!userData.nombre || !userData.email || !userData.password) {
+                errorMsg.textContent = 'Los campos obligatorios son requeridos';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            if (userData.password !== userData.password_confirmation) {
+                errorMsg.textContent = 'Las contraseñas no coinciden';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            const submitBtn = this.querySelector('button[type="submit"]');
+            UI.lockButton(submitBtn, 'Verificando...');
+
+            try {
+                const response = await Auth.register(userData);
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('user', JSON.stringify(data.usuario));
+                    window.location.href = 'dashboard.html';
+                } else {
+                    errorMsg.textContent = data.message || 'Error al registrar';
+                    errorMsg.style.display = 'block';
+                    UI.unlockButton(submitBtn);
+                }
+            } catch (error) {
+                UI.unlockButton(submitBtn);
+                errorMsg.textContent = 'Error de conexión';
+                errorMsg.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
