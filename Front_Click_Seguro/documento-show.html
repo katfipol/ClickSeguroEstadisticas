@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultado de Documento - Click Seguro</title>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="scan-line"></div>
+    <header class="nav">
+        <a class="marca" href="dashboard.html">
+            <img src="images/logo.svg" alt="Click Seguro">
+            CLICK SEGURO
+        </a>
+        <nav>
+            <a href="dashboard.html">ENLACES</a>
+            <a href="archivos.html">ARCHIVOS</a>
+            <a href="documentos.html" class="active">DOCUMENTOS</a>
+            <a href="dominios.html">DOMINIOS</a>
+            <a href="passwords.html">CONTRASEÑAS</a>
+            <a href="history.html">HISTORIAL</a>
+            <a href="estadisticas.html">MIS STATS</a>
+            <a href="reportar.html">REPORTAR</a>
+        </nav>
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <span class="nav-usuario" id="user-name">Usuario</span>
+            <button id="logout-btn" class="btn peligro" style="font-size:0.75rem; padding:4px 10px;">SALIR</button>
+        </div>
+    </header>
+    <main class="contenedor">
+        <div id="loading" class="panel" style="text-align:center;">
+            <p class="muted">Cargando enlaces del documento...</p>
+        </div>
+        <div id="content" style="display:none;">
+            <section class="panel">
+                <h1 id="doc-nombre" style="margin-bottom:0.5rem;"></h1>
+                <p id="doc-info" class="muted"></p>
+                <div id="doc-progreso" style="display:none; margin-top:1rem; padding:0.75rem; border:1px solid var(--cyber-cyan); border-radius:4px;">
+                    <span class="mono" style="color:var(--cyber-cyan);">⟳ Analizando enlaces en segundo plano... Restantes: <strong id="en-curso-count">0</strong></span>
+                </div>
+            </section>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+                <div class="panel" style="text-align:center; border-color:var(--cyber-green); margin-bottom:0;">
+                    <h3 style="color:var(--cyber-green); font-size:0.85rem;">SEGUROS</h3>
+                    <p id="res-seguro" style="font-size:2rem; font-weight:bold; color:var(--cyber-green);">0</p>
+                </div>
+                <div class="panel" style="text-align:center; border-color:var(--cyber-yellow); margin-bottom:0;">
+                    <h3 style="color:var(--cyber-yellow); font-size:0.85rem;">SOSPECHOSOS</h3>
+                    <p id="res-sospechoso" style="font-size:2rem; font-weight:bold; color:var(--cyber-yellow);">0</p>
+                </div>
+                <div class="panel" style="text-align:center; border-color:var(--cyber-red); margin-bottom:0;">
+                    <h3 style="color:var(--cyber-red); font-size:0.85rem;">PELIGROSOS</h3>
+                    <p id="res-peligroso" style="font-size:2rem; font-weight:bold; color:var(--cyber-red);">0</p>
+                </div>
+                <div class="panel" style="text-align:center; margin-bottom:0;">
+                    <h3 style="color:var(--cyber-muted); font-size:0.85rem;">FALLIDOS</h3>
+                    <p id="res-fallido" style="font-size:2rem; font-weight:bold; color:var(--cyber-muted);">0</p>
+                </div>
+            </div>
+
+            <section class="panel">
+                <h2>Enlaces extraídos y analizados</h2>
+                <div class="tabla-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>URL</th>
+                                <th>Estado / Riesgo</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="doc-links-table"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <div class="acciones">
+                <a href="documentos.html" class="btn sec">Analizar otro documento</a>
+                <a href="history.html" class="btn sec">Ir al historial</a>
+            </div>
+        </div>
+    </main>
+    <script type="module">
+        import { Auth, Documents } from './js/api.js';
+
+        const docId = new URLSearchParams(window.location.search).get('id');
+
+        async function checkAuth() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) window.location.href = 'index.html';
+            else document.getElementById('user-name').textContent = user.nombre;
+        }
+
+        async function loadDocument() {
+            try {
+                const data = await Documents.getById(docId);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+
+                const doc = data.documento;
+                document.getElementById('doc-nombre').textContent = doc.nombre;
+                document.getElementById('doc-info').textContent =
+                    `Total de enlaces encontrados: ${doc.total_enlaces} | Omitidos por límite (máx. 20): ${doc.enlaces_omitidos}`;
+
+                document.getElementById('res-seguro').textContent = data.resumen.seguro ?? 0;
+                document.getElementById('res-sospechoso').textContent = data.resumen.sospechoso ?? 0;
+                document.getElementById('res-peligroso').textContent = data.resumen.peligroso ?? 0;
+                document.getElementById('res-fallido').textContent = data.resumen.fallido ?? 0;
+
+                const tbody = document.getElementById('doc-links-table');
+                let html = '';
+                (data.analisis || []).forEach(a => {
+                    const rClass = a.tipo_riesgo ? `riesgo-${a.tipo_riesgo.nombre.toLowerCase()}` : '';
+                    const rText = a.tipo_riesgo ? a.tipo_riesgo.nombre : (a.estado === 'fallido' ? 'Fallido' : 'Analizando...');
+                    html += `
+                        <tr>
+                            <td class="mono">${a.url?.url || '—'}</td>
+                            <td><span class="badge ${rClass}">${rText}</span></td>
+                            <td><a href="analysis.html?id=${a.id_analisis}" class="btn sec" style="padding:0.3rem 0.7rem; font-size:0.75rem;">Ver detalle</a></td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+
+                if (!data.terminado) {
+                    document.getElementById('doc-progreso').style.display = 'block';
+                    document.getElementById('en-curso-count').textContent = data.en_curso;
+                    setTimeout(loadDocument, 2500);
+                } else {
+                    document.getElementById('doc-progreso').style.display = 'none';
+                }
+            } catch (err) {
+                document.getElementById('loading').innerHTML = `<p class="error">${err.message || 'Error al cargar el documento'}</p>`;
+            }
+        }
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try { await Auth.logout(); } catch (e) {}
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        });
+
+        checkAuth();
+        loadDocument();
+    </script>
+</body>
+</html>

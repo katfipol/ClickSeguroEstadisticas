@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentos - Click Seguro</title>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="scan-line"></div>
+
+    <header class="nav">
+        <a class="marca" href="dashboard.html">
+            <img src="images/logo.svg" alt="Click Seguro">
+            CLICK SEGURO
+        </a>
+        <nav>
+            <a href="dashboard.html">ENLACES</a>
+            <a href="archivos.html">ARCHIVOS</a>
+            <a href="documentos.html" class="active">DOCUMENTOS</a>
+            <a href="dominios.html">DOMINIOS</a>
+            <a href="passwords.html">CONTRASEÑAS</a>
+            <a href="history.html">HISTORIAL</a>
+            <a href="estadisticas.html">MIS STATS</a>
+            <a href="reportar.html">REPORTAR</a>
+        </nav>
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <span class="nav-usuario" id="user-name">Usuario</span>
+            <button id="logout-btn" class="btn peligro" style="font-size:0.75rem; padding:4px 10px;">SALIR</button>
+        </div>
+    </header>
+
+    <main class="contenedor">
+        <h1 style="font-family:var(--font-display); color:var(--cyber-green); margin-bottom:0.5rem;">Analizar enlaces de un documento</h1>
+        <p class="muted" style="margin-bottom:2rem;">Sube un PDF o TXT. Se extraen sus enlaces y se analizan. El documento se procesa de forma temporal y no se conserva. Máximo 20 enlaces.</p>
+
+        <section class="panel">
+            <label for="documento-input">Documento (PDF o TXT, máx 5 MB)</label>
+            <div class="file-upload-area" id="doc-drop-zone">
+                <input id="documento-input" type="file" accept=".pdf,.txt,application/pdf,text/plain" class="file-input-hidden">
+                <label for="documento-input" class="file-upload-label">
+                    <svg class="file-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                    <span class="file-upload-text" id="doc-label-text">Haz clic o arrastra un documento aquí</span>
+                    <span class="file-upload-hint">Formatos: PDF, TXT</span>
+                </label>
+            </div>
+            <p id="doc-msg" class="muted" style="margin-top:1rem;"></p>
+            <button id="upload-btn" class="btn" style="margin-top:1rem;">Extraer y analizar enlaces</button>
+        </section>
+
+        <div id="loading" class="panel" style="display:none; text-align:center;">
+            <p class="muted">Procesando documento y enviando enlaces a análisis...</p>
+        </div>
+    </main>
+
+    <script type="module">
+        import { Auth, Documents, UI } from './js/api.js';
+
+        let selectedFile = null;
+
+        async function checkAuth() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) window.location.href = 'index.html';
+            else document.getElementById('user-name').textContent = user.nombre;
+        }
+
+        const input = document.getElementById('documento-input');
+        const label = document.getElementById('doc-label-text');
+        const zone = document.getElementById('doc-drop-zone');
+        const msg = document.getElementById('doc-msg');
+        const uploadBtn = document.getElementById('upload-btn');
+
+        input.addEventListener('change', function() {
+            if (this.files[0]) {
+                const file = this.files[0];
+                const ext = file.name.split('.').pop().toLowerCase();
+                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+
+                if (!['pdf', 'txt'].includes(ext)) {
+                    zone.classList.add('input-error');
+                    selectedFile = null;
+                    msg.textContent = 'Solo se aceptan archivos PDF o TXT';
+                    msg.style.color = 'var(--cyber-red)';
+                    zone.classList.remove('file-selected');
+                    return;
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                    msg.textContent = 'El archivo supera el límite de 5 MB';
+                    msg.style.color = 'var(--cyber-red)';
+                    zone.classList.remove('file-selected');
+                    return;
+                }
+
+                selectedFile = file;
+                label.textContent = `${file.name} (${sizeMB} MB)`;
+                zone.classList.add('file-selected');
+                msg.textContent = 'Archivo listo para procesar.';
+                msg.style.color = 'var(--cyber-green)';
+                uploadBtn.disabled = false;
+            }
+        });
+
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) {
+            zone.classList.add('input-error');
+            msg.textContent = 'Selecciona un documento PDF o TXT para continuar.';
+            msg.style.color = 'var(--cyber-red)';
+            return;
+        }
+
+            UI.lockButton(uploadBtn, 'Procesando documento...');
+            document.getElementById('loading').style.display = 'block';
+
+            try {
+                const formData = new FormData();
+                formData.append('documento', selectedFile);
+                const response = await Documents.upload(formData);
+                const data = await response.json();
+                if (response.ok) {
+                    window.location.href = `documento-show.html?id=${data.documento.id_documento}`;
+                } else {
+                    throw new Error(data.error || 'Error al procesar el documento');
+                }
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                UI.unlockButton(uploadBtn);
+                await UI.alert('ERROR EN DOCUMENTO', error.message);
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try { await Auth.logout(); } catch (e) {}
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        });
+
+        checkAuth();
+    </script>
+</body>
+</html>
