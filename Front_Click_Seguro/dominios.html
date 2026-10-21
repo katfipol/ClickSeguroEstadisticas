@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dominios - Click Seguro</title>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="scan-line"></div>
+
+    <header class="nav">
+        <a class="marca" href="dashboard.html">
+            <img src="images/logo.svg" alt="Click Seguro">
+            CLICK SEGURO
+        </a>
+        <nav>
+            <a href="dashboard.html">ENLACES</a>
+            <a href="archivos.html">ARCHIVOS</a>
+            <a href="documentos.html">DOCUMENTOS</a>
+            <a href="dominios.html" class="active">DOMINIOS</a>
+            <a href="passwords.html">CONTRASEÑAS</a>
+            <a href="history.html">HISTORIAL</a>
+            <a href="estadisticas.html">MIS STATS</a>
+            <a href="reportar.html">REPORTAR</a>
+        </nav>
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <span class="nav-usuario" id="user-name">Usuario</span>
+            <button id="logout-btn" class="btn peligro" style="font-size:0.75rem; padding:4px 10px;">SALIR</button>
+        </div>
+    </header>
+
+    <main class="contenedor">
+        <h1 style="font-family:var(--font-display); color:var(--cyber-green); margin-bottom:0.5rem;">Ficha de dominio o IP</h1>
+        <p class="muted" style="margin-bottom:2rem;">Antigüedad, ubicación y reputación. Un dominio creado hace pocos días es una señal típica de phishing.</p>
+
+        <section class="panel">
+            <form id="domain-form" novalidate>
+                <label for="nombre">Dominio o dirección IP</label>
+                <div class="fila">
+                    <input id="nombre" name="nombre" class="mono" placeholder="ejemplo.com o 192.168.1.1" required style="flex:1;">
+                    <button type="submit" class="btn">Consultar</button>
+                </div>
+                <div id="domain-error" class="error"></div>
+            </form>
+        </section>
+
+        <div id="result-panel" class="panel" style="display:none;">
+            <h2 id="domain-name"></h2>
+            <dl style="display:grid; grid-template-columns:auto 1fr; gap:0.75rem 1.5rem; margin-top:1rem;">
+                <dt style="font-weight:bold; color:var(--cyber-muted);">Tipo:</dt>
+                <dd id="domain-type"></dd>
+                
+                <dt style="font-weight:bold; color:var(--cyber-muted);">Fecha de creación:</dt>
+                <dd id="domain-creation"></dd>
+                
+                <dt style="font-weight:bold; color:var(--cyber-muted);">Registrador:</dt>
+                <dd id="domain-registrar"></dd>
+
+                <dt style="font-weight:bold; color:var(--cyber-muted);">Dirección IP:</dt>
+                <dd id="domain-ip" class="mono"></dd>
+                
+                <dt style="font-weight:bold; color:var(--cyber-muted);">País:</dt>
+                <dd id="domain-country"></dd>
+                
+                <dt style="font-weight:bold; color:var(--cyber-muted);">Reputación:</dt>
+                <dd id="domain-reputation"></dd>
+            </dl>
+            <div id="domain-warning" class="alert alert-error" style="display:none; margin-top:1rem;"></div>
+            <div id="previos-section" style="display:none; margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--cyber-border);">
+                <h3 style="font-family:var(--font-display); color:var(--cyber-green); margin-bottom:0.75rem;">Tus análisis previos en este dominio</h3>
+                <div class="tabla-scroll">
+                    <table>
+                        <thead>
+                            <tr><th>URL</th><th>Fecha</th><th>Riesgo</th><th>Acción</th></tr>
+                        </thead>
+                        <tbody id="previos-table"></tbody>
+                    </table>
+             </div>
+         </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { Auth, Domains, UI } from './js/api.js';
+
+        async function checkAuth() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) window.location.href = 'index.html';
+            else document.getElementById('user-name').textContent = user.nombre;
+        }
+
+        async function consultarDominio(nombre) {
+            const submitBtn = document.querySelector('#domain-form button[type="submit"]');
+            UI.lockButton(submitBtn, 'Consultando...');
+
+            try {
+                const data = await Domains.lookup(nombre);
+                const panel = document.getElementById('result-panel');
+                panel.style.display = 'block';
+
+                document.getElementById('domain-name').textContent = data.nombre;
+                document.getElementById('domain-type').textContent = data.ficha.tipo === 'dominio' ? 'Dominio' : 'Dirección IP';
+                
+                if (data.ficha.tipo === 'dominio') {
+                    const dom = data.ficha.dominio || {};
+                    const fechaCreacion = dom.fecha_creacion;
+                    const dias = fechaCreacion
+                        ? Math.floor((Date.now() - new Date(fechaCreacion).getTime()) / (1000 * 60 * 60 * 24))
+                        : null;
+
+                    document.getElementById('domain-creation').textContent = fechaCreacion
+                        ? `${fechaCreacion} (${dias} días de antigüedad)`
+                        : 'No disponible';
+                    document.getElementById('domain-registrar').textContent = dom.registrador || 'No disponible';
+                    document.getElementById('domain-ip').textContent = dom.ip || 'No disponible';
+                    document.getElementById('domain-country').textContent = dom.pais || 'No disponible';
+                    document.getElementById('domain-reputation').textContent = dom.reputacion ?? 'No disponible';
+
+                    const warning = document.getElementById('domain-warning');
+                    if (dias !== null && dias < 30) {
+                        warning.textContent = `⚠ Dominio muy reciente: tiene solo ${dias} días de antigüedad. Extrema las precauciones.`;
+                        warning.style.display = 'block';
+                    } else {
+                        warning.style.display = 'none';
+                    }
+
+                    // Mostrar análisis previos del usuario sobre este dominio (HU-12)
+                    const previosSec = document.getElementById('previos-section');
+                    const previosTbody = document.getElementById('previos-table');
+                    if (data.previos && data.previos.length > 0) {
+                        previosSec.style.display = 'block';
+                        previosTbody.innerHTML = data.previos.map(a => {
+                            const rClass = a.tipo_riesgo ? `riesgo-${a.tipo_riesgo.nombre.toLowerCase()}` : '';
+                            const rNombre = a.tipo_riesgo ? a.tipo_riesgo.nombre : '—';
+                            return `
+                                <tr>
+                                    <td class="mono">${a.url?.url || '—'}</td>
+                                    <td>${new Date(a.created_at).toLocaleString()}</td>
+                                    <td><span class="badge ${rClass}">${rNombre}</span></td>
+                                    <td><a href="analysis.html?id=${a.id_analisis}" style="color:var(--cyber-cyan);">Ver</a></td>
+                                </tr>
+                            `;
+                        }).join('');
+                    } else {
+                        previosSec.style.display = 'none';
+                    }
+                } else {
+                    const info = data.ficha.datos || {};
+                    document.getElementById('domain-creation').textContent = 'N/A';
+                    document.getElementById('domain-registrar').textContent = info.propietario || 'No disponible';
+                    document.getElementById('domain-ip').textContent = data.nombre;
+                    document.getElementById('domain-country').textContent = info.pais || 'No disponible';
+                    document.getElementById('domain-reputation').textContent = info.reputacion ?? 'No disponible';
+                    document.getElementById('domain-warning').style.display = 'none';
+                    document.getElementById('previos-section').style.display = 'none';
+                }
+            } catch (error) {
+                await UI.alert('ERROR DE CONSULTA', error.message);
+            } finally {
+                UI.unlockButton(submitBtn);
+            }
+        }
+
+        document.getElementById('domain-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nombre = document.getElementById('nombre').value.trim();
+           if (!nombre) {
+                document.getElementById('nombre').classList.add('input-error');
+                document.getElementById('domain-error').textContent = 'Ingresa un dominio o dirección IP para consultar.';
+                return;
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try { await Auth.logout(); } catch (e) {}
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        });
+
+        checkAuth();
+
+        // Si se abrió desde "Ver ficha del dominio" en analysis.html (HU-12)
+        const paramNombre = new URLSearchParams(window.location.search).get('nombre');
+        if (paramNombre) {
+            document.getElementById('nombre').value = paramNombre;
+            consultarDominio(paramNombre);
+        }
+    </script>
+</body>
+</html>
