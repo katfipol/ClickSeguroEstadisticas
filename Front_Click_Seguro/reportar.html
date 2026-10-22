@@ -23,6 +23,7 @@
             <a href="passwords.html">CONTRASEÑAS</a>
             <a href="history.html">HISTORIAL</a>
             <a href="estadisticas.html">MIS STATS</a>
+            <a href="globales.html">GLOBALES</a>
             <a href="reportar.html" class="active">REPORTAR</a>
         </nav>
         <div style="display:flex; align-items:center; gap:1rem;">
@@ -50,7 +51,9 @@
     </main>
 
     <script type="module">
+
         import { Auth, Files, UI } from './js/api.js';
+        import { Auth, Reports, UI } from './js/api.js';
 
         async function checkAuth() {
             const user = JSON.parse(localStorage.getItem('user'));

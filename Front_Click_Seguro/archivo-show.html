@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultado Archivo - Click Seguro</title>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="scan-line"></div>
+
+    <header class="nav">
+        <a class="marca" href="dashboard.html">
+            <img src="images/logo.svg" alt="Click Seguro">
+            CLICK SEGURO
+        </a>
+        <nav>
+            <a href="dashboard.html">ENLACES</a>
+            <a href="archivos.html" class="active">ARCHIVOS</a>
+            <a href="documentos.html">DOCUMENTOS</a>
+            <a href="dominios.html">DOMINIOS</a>
+            <a href="passwords.html">CONTRASEÑAS</a>
+            <a href="history.html">HISTORIAL</a>
+            <a href="estadisticas.html">MIS STATS</a>
+            <a href="globales.html">GLOBALES</a>
+            <a href="reportar.html">REPORTAR</a>
+        </nav>
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <span class="nav-usuario" id="user-name">Usuario</span>
+            <button id="logout-btn" class="btn peligro" style="font-size:0.75rem; padding:4px 10px;">SALIR</button>
+        </div>
+    </header>
+
+    <main class="contenedor">
+        <div id="loading" class="panel" style="text-align:center;">
+            <p class="muted">Cargando resultado del archivo...</p>
+        </div>
+
+        <div id="content" style="display:none;">
+            <div id="veredicto" class="panel" style="text-align:center; padding:2rem;">
+                <h1 id="nivel-riesgo" style="font-size:3rem; margin-bottom:0.5rem;"></h1>
+                <p id="descripcion-riesgo"></p>
+            </div>
+
+            <section class="panel">
+                <h2>Detalles del archivo</h2>
+                <dl style="display:grid; grid-template-columns:auto 1fr; gap:0.75rem 1.5rem;">
+                    <dt style="font-weight:bold; color:var(--cyber-muted);">Nombre:</dt>
+                    <dd id="file-name"></dd>
+                    
+                    <dt style="font-weight:bold; color:var(--cyber-muted);">Tamaño:</dt>
+                    <dd id="file-size"></dd>
+                    
+                    <dt style="font-weight:bold; color:var(--cyber-muted);">Huella SHA-256:</dt>
+                    <dd id="file-hash" class="mono" style="word-break:break-all;"></dd>
+                    
+                    <dt style="font-weight:bold; color:var(--cyber-muted);">Fecha:</dt>
+                    <dd id="file-date"></dd>
+                    
+                    <dt style="font-weight:bold; color:var(--cyber-muted);">Detecciones:</dt>
+                    <dd id="file-detections"></dd>
+                </dl>
+            </section>
+
+            <section class="panel" id="details-section" style="display:none;">
+                <h2>Resultados por motor</h2>
+                <div class="tabla-scroll">
+                    <table id="detalles-table">
+                        <thead>
+                            <tr><th>Motor</th><th>Resultado</th><th>Categoría</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <div class="acciones">
+                <a href="archivos.html" class="btn sec">Verificar otro archivo</a>
+                <button id="pdf-btn" class="btn">Descargar Informe PDF</button>
+                <a href="history.html" class="btn sec">Volver al historial</a>
+         </div>
+        </div>
+    </main>
+
+<script type="module">
+        import { Auth, Files, UI } from './js/api.js';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const fileId = urlParams.get('id');
+
+        const descripcionesArchivo = {
+            'seguro': 'Archivo conocido por VirusTotal sin detecciones maliciosas.',
+            'sospechoso': 'Algunos motores marcaron este archivo como sospechoso. Ten cuidado al abrirlo.',
+            'peligroso': '¡Peligro! Múltiples motores detectaron malware o código malicioso en este archivo.'
+        };
+
+        async function loadFile() {
+            try {
+                const file = await Files.getById(fileId);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+
+                const nivel = file.tipo_riesgo ? file.tipo_riesgo.nombre.toLowerCase() : 'desconocido';
+                const veredictoEl = document.getElementById('veredicto');
+                veredictoEl.className = `panel riesgo-${nivel}`;
+                
+                document.getElementById('nivel-riesgo').textContent = file.tipo_riesgo
+                    ? file.tipo_riesgo.nombre.toUpperCase()
+                    : 'SIN INFORMACIÓN';
+
+                document.getElementById('descripcion-riesgo').textContent = descripcionesArchivo[nivel]
+                    || 'VirusTotal no conoce este archivo. Eso no significa que sea seguro: sé cauteloso.';
+                
+                document.getElementById('file-name').textContent = file.nombre;
+                document.getElementById('file-size').textContent = (file.tamano / 1024).toFixed(1) + ' KB';
+                document.getElementById('file-hash').textContent = file.sha256;
+                document.getElementById('file-date').textContent = new Date(file.created_at).toLocaleString();
+                document.getElementById('file-detections').textContent = (file.detecciones ?? 0) + ' motores';
+
+                if (file.detalles && file.detalles.length > 0) {
+                    document.getElementById('details-section').style.display = 'block';
+                    const tbody = document.querySelector('#detalles-table tbody');
+                    let html = '';
+                    file.detalles.forEach(d => {
+                        html += `
+                            <tr>
+                                <td>${d.motor || 'Resumen General'}</td>
+                                <td>${d.resultado || '—'}</td>
+                                <td>${d.categoria || '—'}</td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                }
+                document.getElementById('pdf-btn').addEventListener('click', async function() {
+                UI.lockButton(this, 'Generando PDF...');
+                try {
+                    await Files.downloadReport(fileId);
+                } catch (err) {
+                    await UI.alert('ERROR', err.message);
+                } finally {
+                    UI.unlockButton(this);
+                }
+           });
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `<p class="error">${error.message || 'Error al cargar el resultado del archivo'}</p>`;
+            }
+        }
+
+        async function checkAuth() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) window.location.href = 'index.html';
+            else document.getElementById('user-name').textContent = user.nombre;
+        }
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try { await Auth.logout(); } catch (e) {}
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        });
+
+        checkAuth();
+        loadFile();
+    </script>
+    </body>
+</html>
