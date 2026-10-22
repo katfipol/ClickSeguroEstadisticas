@@ -116,10 +116,8 @@
             if (/[A-Z]/.test(val)) score++;
             if (/[0-9]/.test(val)) score++;
             if (/[^A-Za-z0-9]/.test(val)) score++;
-
             const pct = Math.min(100, Math.round((score / 5) * 100));
             bar.style.width = pct + '%';
-
             if (score <= 2) {
                 bar.style.background = 'var(--cyber-red)';
                 txt.style.color = 'var(--cyber-red)';
@@ -135,11 +133,15 @@
             }
         });
 
-        // Registro
+        // Registro con mensajes de error específicos
         document.getElementById('register-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
             const errorMsg = document.getElementById('error-message');
+            const mostrarError = (msg) => {
+                errorMsg.textContent = msg;
+                errorMsg.style.display = 'block';
+            };
+
             const userData = {
                 nombre: document.getElementById('nombre').value.trim(),
                 apellido_paterno: document.getElementById('apellido_paterno').value.trim(),
@@ -149,37 +151,44 @@
                 password_confirmation: document.getElementById('password_confirmation').value
             };
 
-            if (!userData.nombre || !userData.email || !userData.password) {
-                errorMsg.textContent = 'Los campos obligatorios son requeridos';
-                errorMsg.style.display = 'block';
+            const faltantes = [];
+            if (!userData.nombre) faltantes.push('Nombre');
+            if (!userData.email) faltantes.push('Correo Electrónico');
+            if (!userData.password) faltantes.push('Contraseña');
+            if (!userData.password_confirmation) faltantes.push('Confirmar Contraseña');
+
+            if (faltantes.length > 0) {
+                mostrarError(`Faltan los siguientes campos obligatorios: ${faltantes.join(', ')}.`);
                 return;
             }
-
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userData.email)) {
+                mostrarError('Ingresa un correo electrónico válido (ejemplo: usuario@dominio.com).');
+                return;
+            }
+            if (userData.password.length < 8) {
+                mostrarError('La contraseña debe tener como mínimo 8 caracteres.');
+                return;
+            }
             if (userData.password !== userData.password_confirmation) {
-                errorMsg.textContent = 'Las contraseñas no coinciden';
-                errorMsg.style.display = 'block';
+                mostrarError('Las contraseñas ingresadas no coinciden.');
                 return;
             }
 
             const submitBtn = this.querySelector('button[type="submit"]');
             UI.lockButton(submitBtn, 'Verificando...');
-
             try {
                 const response = await Auth.register(userData);
                 const data = await response.json();
-
                 if (response.ok) {
                     localStorage.setItem('user', JSON.stringify(data.usuario));
                     window.location.href = 'dashboard.html';
                 } else {
-                    errorMsg.textContent = data.message || 'Error al registrar';
-                    errorMsg.style.display = 'block';
+                    mostrarError(data.message || 'Error al registrar el usuario.');
                     UI.unlockButton(submitBtn);
                 }
             } catch (error) {
                 UI.unlockButton(submitBtn);
-                errorMsg.textContent = 'Error de conexión';
-                errorMsg.style.display = 'block';
+                mostrarError(error.message || 'Error de conexión con el servidor.');
             }
         });
     </script>

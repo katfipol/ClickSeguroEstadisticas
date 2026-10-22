@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archivos - Click Seguro</title>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="scan-line"></div>
+
+    <header class="nav">
+        <a class="marca" href="dashboard.html">
+            <img src="images/logo.svg" alt="Click Seguro">
+            CLICK SEGURO
+        </a>
+        <nav>
+            <a href="dashboard.html">ENLACES</a>
+            <a href="archivos.html" class="active">ARCHIVOS</a>
+            <a href="documentos.html">DOCUMENTOS</a>
+            <a href="dominios.html">DOMINIOS</a>
+            <a href="passwords.html">CONTRASEÑAS</a>
+            <a href="history.html">HISTORIAL</a>
+            <a href="estadisticas.html">MIS STATS</a>
+            <a href="globales.html">GLOBALES</a>
+            <a href="reportar.html">REPORTAR</a>
+        </nav>
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <span class="nav-usuario" id="user-name">Usuario</span>
+            <button id="logout-btn" class="btn peligro" style="font-size:0.75rem; padding:4px 10px;">SALIR</button>
+        </div>
+    </header>
+
+    <main class="contenedor">
+        <h1 style="font-family:var(--font-display); color:var(--cyber-green); margin-bottom:0.5rem;">Verificar un archivo</h1>
+        <p class="muted" style="margin-bottom:2rem;">Tu navegador calcula la huella (SHA-256) del archivo y solo esa huella se consulta en VirusTotal. <strong>El archivo no sale de tu equipo.</strong></p>
+
+        <section class="panel">
+            <label for="archivo-input">Archivo (hasta 50 MB)</label>
+            <div class="file-upload-area" id="file-drop-zone">
+                <input id="archivo-input" type="file" class="file-input-hidden">
+                <label for="archivo-input" class="file-upload-label">
+                    <svg class="file-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <span class="file-upload-text" id="file-label-text">Haz clic o arrastra un archivo aquí</span>
+                    <span class="file-upload-hint">Máximo 50 MB</span>
+                </label>
+            </div>
+            <p id="archivo-msg" class="muted" style="margin-top:1rem;"></p>
+            <p id="archivo-hash" class="mono" style="margin-top:1rem; word-break:break-all;"></p>
+            <button id="verify-btn" class="btn" style="margin-top:1rem;">Consultar en VirusTotal</button>
+        </section>
+
+        <div id="loading" style="display:none;" class="panel" style="text-align:center;">
+            <p class="muted">Verificando...</p>
+        </div>
+    </main>
+
+    <script type="module">
+        import { Auth, Files, UI } from './js/api.js';
+
+        let selectedFile = null;
+
+        async function checkAuth() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) window.location.href = 'index.html';
+            else document.getElementById('user-name').textContent = user.nombre;
+        }
+
+        const input = document.getElementById('archivo-input');
+        const label = document.getElementById('file-label-text');
+        const zone = document.getElementById('file-drop-zone');
+        const msg = document.getElementById('archivo-msg');
+        const hashEl = document.getElementById('archivo-hash');
+        const verifyBtn = document.getElementById('verify-btn');
+
+        input.addEventListener('change', async function() {
+            if (this.files[0]) {
+                const file = this.files[0];
+                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                
+                if (file.size > 50 * 1024 * 1024) {
+                    msg.textContent = 'El archivo supera el límite de 50 MB';
+                    msg.style.color = 'var(--cyber-red)';
+                    selectedFile = null;
+                    zone.classList.add('input-error');
+                    return;
+                }
+                
+                zone.classList.remove('input-error');
+                selectedFile = file;
+                label.textContent = `${file.name} (${sizeMB} MB)`;
+                zone.classList.add('file-selected');
+                msg.textContent = 'Calculando hash SHA-256...';
+                
+                const buffer = await file.arrayBuffer();
+                const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                
+                hashEl.textContent = hash;
+                msg.textContent = 'Hash calculado. Listo para verificar.';
+                msg.style.color = 'var(--cyber-green)';
+                verifyBtn.disabled = false;
+            }
+        });
+
+        verifyBtn.addEventListener('click', async () => {
+            if (!selectedFile) {
+            zone.classList.add('input-error');
+            msg.textContent = 'Selecciona un archivo para poder verificar su huella.';
+            msg.style.color = 'var(--cyber-red)';
+            return;
+        }
+            UI.lockButton(verifyBtn, 'Verificando...');
+            document.getElementById('loading').style.display = 'block';
+
+            try {
+                const sha256 = hashEl.textContent; // Ya lo calculaste al seleccionar el archivo, no hace falta recalcularlo
+                const result = await Files.verify(sha256, selectedFile.name, selectedFile.size);
+                window.location.href = `archivo-show.html?id=${result.archivo.id_archivo}`;
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                UI.unlockButton(verifyBtn);
+                await UI.alert('ERROR', error.message);
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try { await Auth.logout(); } catch (e) {}
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        });
+
+        checkAuth();
+    </script>
+</body>
+</html>

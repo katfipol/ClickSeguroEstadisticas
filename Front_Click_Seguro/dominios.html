@@ -23,6 +23,10 @@
             <a href="passwords.html">CONTRASEÑAS</a>
             <a href="history.html">HISTORIAL</a>
             <a href="estadisticas.html">MIS STATS</a>
+<<<<<<< Updated upstream
+=======
+            <a href="globales.html">GLOBALES</a>
+>>>>>>> Stashed changes
             <a href="reportar.html">REPORTAR</a>
         </nav>
         <div style="display:flex; align-items:center; gap:1rem;">
@@ -166,11 +170,14 @@
         document.getElementById('domain-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const nombre = document.getElementById('nombre').value.trim();
-           if (!nombre) {
+            if (!nombre) {
+
                 document.getElementById('nombre').classList.add('input-error');
                 document.getElementById('domain-error').textContent = 'Ingresa un dominio o dirección IP para consultar.';
                 return;
             }
+            document.getElementById('domain-error').textContent = '';
+            await consultarDominio(nombre);
         });
 
         document.getElementById('logout-btn').addEventListener('click', async () => {

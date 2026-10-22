@@ -42,9 +42,14 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     const json = await response.json();
 
     if (!response.ok) {
-        // Si hay errores de validación de Laravel (422), mostramos el primero o el mensaje general
-        const primerError = json.errors ? Object.values(json.errors)[0][0] : null;
-        throw new Error(primerError || json.message || 'Error en la petición.');
+        let mensajeDetallado = json?.message || 'Error en la petición.';
+        if (json?.errors && typeof json.errors === 'object') {
+            const listaErrores = Object.values(json.errors).flat();
+            if (listaErrores.length > 0) {
+                mensajeDetallado = listaErrores.join(' | ');
+            }
+        }
+        throw new Error(mensajeDetallado);
     }
 
     return json;
@@ -260,8 +265,13 @@ export const Reports = {
     async store(url, motivo = '') {
         const json = await apiRequest('/reports', 'POST', { url, motivo });
         return json.data;
+    },
+    async create(url, motivo = '') {
+        const json = await apiRequest('/reports', 'POST', { url, motivo });
+        return json.data;
     }
 };
+window.Reports = Reports;
 
 // ---------------- Utilidades de Interfaz (Modales y Bloqueo de Botones) ----------------
 // Inyectar estilos del Modal y Bloqueo para evitar problemas de caché en el navegador
@@ -367,7 +377,7 @@ export const UI = {
     },
 
     // Modal emergente con botón Aceptar
-    alert(titulo, mensaje) {
+    alert(titulo = 'Aviso', mensaje = '') {
         return new Promise((resolve) => {
             const overlay = document.createElement('div');
             overlay.className = 'cyber-modal-overlay';
