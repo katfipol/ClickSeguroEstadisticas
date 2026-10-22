@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial - Click Seguro</title>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="scan-line"></div>
+
+    <header class="nav">
+        <a class="marca" href="dashboard.html">
+            <img src="images/logo.svg" alt="Click Seguro">
+            CLICK SEGURO
+        </a>
+        <nav>
+            <a href="dashboard.html">ENLACES</a>
+            <a href="archivos.html">ARCHIVOS</a>
+            <a href="documentos.html">DOCUMENTOS</a>
+            <a href="dominios.html">DOMINIOS</a>
+            <a href="passwords.html">CONTRASEÑAS</a>
+            <a href="history.html" class="active">HISTORIAL</a>
+            <a href="estadisticas.html">MIS STATS</a>
+            <a href="reportar.html">REPORTAR</a>
+        </nav>
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <span class="nav-usuario" id="user-name">Usuario</span>
+            <button id="logout-btn" class="btn peligro" style="font-size:0.75rem; padding:4px 10px;">SALIR</button>
+        </div>
+    </header>
+
+    <main class="contenedor">
+        <h1 style="font-family:var(--font-display); color:var(--cyber-green); margin-bottom:1.5rem;">Historial</h1>
+        
+        <div class="panel">
+            <div class="tabla-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>URL</th>
+                            <th>Fecha</th>
+                            <th>Nivel de riesgo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table">
+                        <tr><td colspan="4" style="text-align:center;">Cargando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <h2 style="font-family:var(--font-display); color:var(--cyber-green); margin:2rem 0 1rem;">Archivos verificados (SHA-256)</h2>
+        <div class="panel">
+            <div class="tabla-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Archivo</th>
+                            <th>Huella SHA-256</th>
+                            <th>Fecha</th>
+                            <th>Nivel de riesgo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="files-history-table">
+                        <tr><td colspan="5" style="text-align:center;">Cargando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { Auth, Analyses, Files, UI } from './js/api.js';
+
+        async function checkAuth() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) window.location.href = 'index.html';
+            else document.getElementById('user-name').textContent = user.nombre;
+        }
+
+        async function loadHistory() {
+            try {
+                // 1. Tabla de URLs analizadas
+                const data = await Analyses.getAll();
+                const tbody = document.getElementById('history-table');
+                
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay análisis registrados todavía</td></tr>';
+                } else {
+                    let html = '';
+                    data.forEach(analysis => {
+                        const riesgoClass = analysis.tipo_riesgo ? `riesgo-${analysis.tipo_riesgo.nombre.toLowerCase()}` : '';
+                        const riesgoText = analysis.tipo_riesgo ? analysis.tipo_riesgo.nombre : (analysis.estado === 'fallido' ? 'Falló' : 'En curso');
+                        
+                        html += `
+                            <tr id="row-analysis-${analysis.id_analisis}">
+                                <td class="mono" style="vertical-align:middle; word-break:break-all;">${analysis.url.url}</td>
+                                <td style="vertical-align:middle; white-space:nowrap;">${new Date(analysis.created_at).toLocaleString()}</td>
+                                <td style="vertical-align:middle;"><span class="badge ${riesgoClass}">${riesgoText}</span></td>
+                                <td style="vertical-align:middle; white-space:nowrap;">
+                                    <div class="acciones-celda">
+                                        <a href="analysis.html?id=${analysis.id_analisis}" class="btn sec" style="padding:0.35rem 0.75rem; font-size:0.75rem;">Ver</a>
+                                        <button type="button" class="btn peligro btn-delete-analysis" data-id="${analysis.id_analisis}" style="padding:0.35rem 0.75rem; font-size:0.75rem;">Eliminar</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+
+                    document.querySelectorAll('.btn-delete-analysis').forEach(btn => {
+                        btn.addEventListener('click', async function() {
+                            const id = this.dataset.id;
+                            const ok = await UI.confirm('Eliminar análisis', '¿Estás seguro de que deseas eliminar este análisis de tu historial?');
+                            if (!ok) return;
+
+                            UI.lockButton(this, 'Borrando...');
+                            try {
+                                await Analyses.delete(id);
+                                document.getElementById(`row-analysis-${id}`)?.remove();
+                                if (tbody.children.length === 0) {
+                                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay análisis registrados todavía</td></tr>';
+                                }
+                                await UI.alert('Eliminado correctamente', 'El análisis fue eliminado de tu historial.');
+                            } catch (err) {
+                                UI.unlockButton(this);
+                                await UI.alert('Error', err.message || 'No se pudo eliminar el análisis.');
+                            }
+                        });
+                    });
+                }
+
+                // 2. Tabla de Archivos verificados
+                const filesData = await Files.getAll();
+                const filesTbody = document.getElementById('files-history-table');
+                if (!filesData || filesData.length === 0) {
+                    filesTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay archivos verificados todavía</td></tr>';
+                } else {
+                    let fHtml = '';
+                    filesData.forEach(f => {
+                        const rClass = f.tipo_riesgo ? `riesgo-${f.tipo_riesgo.nombre.toLowerCase()}` : '';
+                        const rText = f.tipo_riesgo ? f.tipo_riesgo.nombre : 'Desconocido';
+                        fHtml += `
+                            <tr id="row-file-${f.id_archivo}">
+                                <td style="vertical-align:middle;">${f.nombre}</td>
+                                <td class="mono" style="vertical-align:middle;">${f.sha256.substring(0, 16)}...</td>
+                                <td style="vertical-align:middle; white-space:nowrap;">${new Date(f.created_at).toLocaleString()}</td>
+                                <td style="vertical-align:middle;"><span class="badge ${rClass}">${rText}</span></td>
+                                <td style="vertical-align:middle; white-space:nowrap;">
+                                    <div class="acciones-celda">
+                                        <a href="archivo-show.html?id=${f.id_archivo}" class="btn sec" style="padding:0.35rem 0.75rem; font-size:0.75rem;">Ver</a>
+                                        <button type="button" class="btn peligro btn-delete-file" data-id="${f.id_archivo}" style="padding:0.35rem 0.75rem; font-size:0.75rem;">Eliminar</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    filesTbody.innerHTML = fHtml;
+
+                    document.querySelectorAll('.btn-delete-file').forEach(btn => {
+                        btn.addEventListener('click', async function() {
+                            const id = this.dataset.id;
+                            const ok = await UI.confirm('Eliminar archivo', '¿Estás seguro de que deseas eliminar este archivo verificado de tu historial?');
+                            if (!ok) return;
+
+                            UI.lockButton(this, 'Borrando...');
+                            try {
+                                await Files.delete(id);
+                                document.getElementById(`row-file-${id}`)?.remove();
+                                if (filesTbody.children.length === 0) {
+                                    filesTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay archivos verificados todavía</td></tr>';
+                                }
+                                await UI.alert('Eliminado correctamente', 'El archivo verificado fue eliminado de tu historial.');
+                            } catch (err) {
+                                UI.unlockButton(this);
+                                await UI.alert('Error', err.message || 'No se pudo eliminar el archivo.');
+                            }
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try { await Auth.logout(); } catch (e) {}
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        });
+
+        checkAuth();
+        loadHistory();
+    </script>
+</body>
+</html>

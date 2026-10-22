@@ -25,6 +25,7 @@
             <a href="passwords.html">CONTRASEÑAS</a>
             <a href="history.html">HISTORIAL</a>
             <a href="estadisticas.html">MIS STATS</a>
+            <a href="globales.html">GLOBALES</a>
             <a href="reportar.html">REPORTAR</a>
         </nav>
         <div style="display:flex; align-items:center; gap:1rem;">
@@ -99,15 +100,39 @@
 
                 let html = '';
                 data.slice(0, 5).forEach(analysis => {
-                    const riesgoClass = analysis.tipo_riesgo ? `riesgo-${analysis.tipo_riesgo.nombre.toLowerCase()}` : '';
-                    const riesgoText = analysis.tipo_riesgo ? analysis.tipo_riesgo.nombre : 'En curso';
-                    
+                    const nombreRiesgo = (analysis.tipo_riesgo?.nombre || analysis.nivel_riesgo || '').toLowerCase();
+                    const estado = (analysis.estado || '').toLowerCase();
+
+                    let textoEstado = 'Falló';
+                    let claseBadge = '';
+
+                    if (nombreRiesgo.includes('seguro')) {
+                        textoEstado = 'Seguro';
+                        claseBadge = 'riesgo-seguro';
+                    } else if (nombreRiesgo.includes('sospechoso')) {
+                        textoEstado = 'Sospechoso';
+                        claseBadge = 'riesgo-sospechoso';
+                    } else if (nombreRiesgo.includes('peligroso')) {
+                        textoEstado = 'Peligroso';
+                        claseBadge = 'riesgo-peligroso';
+                    } else if (estado === 'pendiente' || estado === 'procesando' || estado === 'en_curso') {
+                        textoEstado = 'En curso';
+                    } else {
+                        textoEstado = 'Falló';
+                    }
+
                     html += `
-                        <a href="analysis.html?id=${analysis.id_analisis}" class="item" style="text-decoration:none; color:inherit;">
-                            <span class="badge ${riesgoClass}">${riesgoText}</span>
-                            <span class="mono" style="flex:1;">${analysis.url.url}</span>
-                            <span class="muted">${new Date(analysis.created_at).toLocaleString()}</span>
-                        </a>
+                        <div class="fila" style="justify-content:space-between; padding:0.75rem 0; border-bottom:1px solid var(--cyber-border);">
+                            <div style="display:flex; align-items:center; gap:0.75rem; overflow:hidden;">
+                                <span class="badge ${claseBadge}">${textoEstado}</span>
+                                <a href="analysis.html?id=${analysis.id_analisis}" class="mono" style="color:var(--cyber-text); text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                    ${analysis.url?.url || '—'}
+                                </a>
+                            </div>
+                            <span class="muted" style="font-size:0.85rem; white-space:nowrap;">
+                                ${new Date(analysis.created_at).toLocaleString()}
+                            </span>
+                        </div>
                     `;
                 });
                 

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportar - Click Seguro</title>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="scan-line"></div>
+
+    <header class="nav">
+        <a class="marca" href="dashboard.html">
+            <img src="images/logo.svg" alt="Click Seguro">
+            CLICK SEGURO
+        </a>
+        <nav>
+            <a href="dashboard.html">ENLACES</a>
+            <a href="archivos.html">ARCHIVOS</a>
+            <a href="documentos.html">DOCUMENTOS</a>
+            <a href="dominios.html">DOMINIOS</a>
+            <a href="passwords.html">CONTRASEÑAS</a>
+            <a href="history.html">HISTORIAL</a>
+            <a href="estadisticas.html">MIS STATS</a>
+            <a href="globales.html">GLOBALES</a>
+            <a href="reportar.html" class="active">REPORTAR</a>
+        </nav>
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <span class="nav-usuario" id="user-name">Usuario</span>
+            <button id="logout-btn" class="btn peligro" style="font-size:0.75rem; padding:4px 10px;">SALIR</button>
+        </div>
+    </header>
+
+    <main class="contenedor">
+        <h1 style="font-family:var(--font-display); color:var(--cyber-green); margin-bottom:0.5rem;">Reportar una URL sospechosa</h1>
+        <p class="muted" style="margin-bottom:2rem;">Ayuda a la comunidad a mantenerse segura reportando enlaces maliciosos.</p>
+
+        <section class="panel">
+            <form id="report-form" novalidate>
+                <label for="url">URL sospechosa</label>
+                <input id="url" name="url" class="mono" placeholder="https://ejemplo-malicioso.com" required style="width:100%; margin-bottom:1rem;">
+                
+                <label for="motivo">Motivo (opcional)</label>
+                <textarea id="motivo" name="motivo" rows="4" placeholder="Describe por qué crees que es peligrosa (phishing, malware, estafa...)" style="width:100%; margin-bottom:1rem;"></textarea>
+                
+                <div id="report-msg" class="muted" style="margin-bottom:1rem;"></div>
+                <button type="submit" class="btn">Enviar reporte</button>
+            </form>
+        </section>
+    </main>
+
+    <script type="module">
+
+        import { Auth, Files, UI } from './js/api.js';
+        import { Auth, Reports, UI } from './js/api.js';
+
+        async function checkAuth() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) window.location.href = 'index.html';
+            else document.getElementById('user-name').textContent = user.nombre;
+        }
+
+        document.getElementById('report-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const url = document.getElementById('url').value.trim();
+            const motivo = document.getElementById('motivo').value.trim();
+            const msgEl = document.getElementById('report-msg');
+            const submitBtn = this.querySelector('button[type="submit"]');
+            
+            if (!url) {
+                document.getElementById('url').classList.add('input-error');
+                msgEl.textContent = 'Ingresa la URL sospechosa que deseas reportar.';
+                msgEl.style.color = 'var(--cyber-red)';
+                return;
+            }
+
+            UI.lockButton(submitBtn, 'Enviando...');
+            try {
+                msgEl.textContent = 'Enviando reporte...';
+                await Reports.store(url, motivo);
+                msgEl.textContent = '';
+                document.getElementById('report-form').reset();
+                await UI.alert('Reporte registrado', 'Tu reporte fue registrado exitosamente. Gracias por ayudar a mantener la web segura.');
+            } catch (error) {
+                msgEl.textContent = '';
+                await UI.alert('Aviso', error.message || 'No se pudo enviar el reporte.');
+            } finally {
+                UI.unlockButton(submitBtn);
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try { await Auth.logout(); } catch (e) {}
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        });
+
+        checkAuth();
+    </script>
+</body>
+</html>
