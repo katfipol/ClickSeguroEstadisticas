@@ -72,7 +72,15 @@
 
                     <div class="form-group">
                         <label for="password">> Contraseña <span style="color:var(--cyber-red);">*</span></label>
-                        <input type="password" id="password" name="password" placeholder="Mínimo 8 caracteres" required>
+                        <div class="input-password-wrap">
+                            <input type="password" id="password" name="password" placeholder="Mínimo 8 caracteres" required>
+                            <button type="button" class="btn-eye-inside toggle-reg-pw" data-target="password" aria-label="Mostrar u ocultar contraseña">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
                         <div class="medidor" style="margin-top:0.5rem; background:rgba(0,0,0,0.6); height:4px; border-radius:2px;">
                             <div id="strength-bar" style="width:0%; height:100%; background:var(--cyber-red); border-radius:2px; transition:all 0.3s;"></div>
                         </div>
@@ -81,7 +89,15 @@
 
                     <div class="form-group">
                         <label for="password_confirmation">> Confirmar Contraseña <span style="color:var(--cyber-red);">*</span></label>
-                        <input type="password" id="password_confirmation" name="password_confirmation" placeholder="Repite tu contraseña" required>
+                        <div class="input-password-wrap">
+                            <input type="password" id="password_confirmation" name="password_confirmation" placeholder="Repite tu contraseña" required>
+                            <button type="button" class="btn-eye-inside toggle-reg-pw" data-target="password_confirmation" aria-label="Mostrar u ocultar confirmación">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <button type="submit" class="btn" style="width:100%; padding:1rem;">REGISTRAR USUARIO</button>
@@ -96,6 +112,18 @@
 
     <script type="module">
         import { Auth, UI } from './js/api.js';
+
+        const iconoOjoAbierto = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+        const iconoOjoCerrado = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+
+        document.querySelectorAll('.toggle-reg-pw').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const input = document.getElementById(this.dataset.target);
+                const mostrar = input.type === 'password';
+                input.type = mostrar ? 'text' : 'password';
+                this.innerHTML = mostrar ? iconoOjoCerrado : iconoOjoAbierto;
+            });
+        });
 
         // Medidor de fortaleza
         const pwd = document.getElementById('password');
@@ -116,6 +144,9 @@
             if (/[A-Z]/.test(val)) score++;
             if (/[0-9]/.test(val)) score++;
             if (/[^A-Za-z0-9]/.test(val)) score++;
+            if (/(1234|abcd|qwerty|password|admin|welcome|login|1111|0000|aaaa)/i.test(val) || /^(.)\1{3,}$/.test(val)) {
+                score = Math.max(1, score - 2);
+            }
             const pct = Math.min(100, Math.round((score / 5) * 100));
             bar.style.width = pct + '%';
             if (score <= 2) {
@@ -159,6 +190,24 @@
 
             if (faltantes.length > 0) {
                 mostrarError(`Faltan los siguientes campos obligatorios: ${faltantes.join(', ')}.`);
+                return;
+            }
+            // Validar que Nombre y Apellidos solo contengan letras y espacios (sin numeros ni simbolos)
+            const soloLetrasRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
+
+            if (!soloLetrasRegex.test(userData.nombre)) {
+                document.getElementById('nombre').classList.add('input-error');
+                mostrarError('El Nombre solo puede contener letras y espacios (no se permiten números ni caracteres especiales).');
+                return;
+            }
+            if (userData.apellido_paterno && !soloLetrasRegex.test(userData.apellido_paterno)) {
+                document.getElementById('apellido_paterno').classList.add('input-error');
+                mostrarError('El Apellido Paterno solo puede contener letras y espacios (sin números ni caracteres especiales).');
+                return;
+            }
+            if (userData.apellido_materno && !soloLetrasRegex.test(userData.apellido_materno)) {
+                document.getElementById('apellido_materno').classList.add('input-error');
+                mostrarError('El Apellido Materno solo puede contener letras y espacios (sin números ni caracteres especiales).');
                 return;
             }
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userData.email)) {
