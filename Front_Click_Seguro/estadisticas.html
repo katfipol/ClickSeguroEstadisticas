@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estadísticas - Click Seguro</title>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="scan-line"></div>
+
+    <header class="nav">
+        <a class="marca" href="dashboard.html">
+            <img src="images/logo.svg" alt="Click Seguro">
+            CLICK SEGURO
+        </a>
+        <nav>
+            <a href="dashboard.html">ENLACES</a>
+            <a href="archivos.html">ARCHIVOS</a>
+            <a href="documentos.html">DOCUMENTOS</a>
+            <a href="dominios.html">DOMINIOS</a>
+            <a href="passwords.html">CONTRASEÑAS</a>
+            <a href="history.html">HISTORIAL</a>
+            <a href="estadisticas.html" class="active">MIS STATS</a>
+            <a href="globales.html">GLOBALES</a>
+            <a href="reportar.html">REPORTAR</a>
+        </nav>
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <span class="nav-usuario" id="user-name">Usuario</span>
+            <button id="logout-btn" class="btn peligro" style="font-size:0.75rem; padding:4px 10px;">SALIR</button>
+        </div>
+    </header>
+
+    <main class="contenedor">
+        <h1 style="font-family:var(--font-display); color:var(--cyber-green); margin-bottom:1.5rem;">Mis Estadísticas</h1>
+        
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1.5rem; margin-bottom:2rem;">
+            <div class="panel" style="text-align:center;">
+                <h3 style="color:var(--cyber-muted); font-size:0.9rem;">TOTAL ANALIZADOS</h3>
+                <p id="stat-total" style="font-size:2.5rem; font-weight:bold; color:var(--cyber-cyan);">0</p>
+            </div>
+            <div class="panel" style="text-align:center; border-color:var(--cyber-green);">
+                <h3 style="color:var(--cyber-green); font-size:0.9rem;">SEGUROS</h3>
+                <p id="stat-seguros" style="font-size:2.5rem; font-weight:bold; color:var(--cyber-green);">0</p>
+            </div>
+            <div class="panel" style="text-align:center; border-color:var(--cyber-yellow);">
+                <h3 style="color:var(--cyber-yellow); font-size:0.9rem;">SOSPECHOSOS</h3>
+                <p id="stat-sospechosos" style="font-size:2.5rem; font-weight:bold; color:var(--cyber-yellow);">0</p>
+            </div>
+            <div class="panel" style="text-align:center; border-color:var(--cyber-red);">
+                <h3 style="color:var(--cyber-red); font-size:0.9rem;">PELIGROSOS</h3>
+                <p id="stat-peligrosos" style="font-size:2.5rem; font-weight:bold; color:var(--cyber-red);">0</p>
+            </div>
+            <div class="panel" style="text-align:center;">
+                <h3 style="color:var(--cyber-muted); font-size:0.9rem;">REPORTADOS</h3>
+                <p id="stat-reportes" style="font-size:2.5rem; font-weight:bold; color:var(--cyber-cyan);">0</p>
+            </div>
+        </div>
+
+        <p id="personal-empty-msg" class="muted" style="display:none; margin-bottom:2rem;">Todavía no tienes análisis registrados en tu cuenta.</p>
+    </main>
+
+    <script type="module">
+        import { Auth, Statistics } from './js/api.js';
+
+        async function checkAuth() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) window.location.href = 'index.html';
+            else document.getElementById('user-name').textContent = user.nombre;
+        }
+
+        async function loadPersonalStats() {
+            try {
+                const stats = await Statistics.personal();
+                document.getElementById('stat-total').textContent = stats.total || 0;
+                document.getElementById('stat-seguros').textContent = stats.seguros || 0;
+                document.getElementById('stat-sospechosos').textContent = stats.sospechosos || 0;
+                document.getElementById('stat-peligrosos').textContent = stats.peligrosos || 0;
+                document.getElementById('stat-reportes').textContent = stats.reportes || 0;
+
+                if ((stats.total || 0) === 0) {
+                    document.getElementById('personal-empty-msg').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error cargando estadísticas personales:', error);
+            }
+        }
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try { await Auth.logout(); } catch (e) {}
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        });
+
+        checkAuth();
+        loadPersonalStats();
+    </script>
+</body>
+</html>
