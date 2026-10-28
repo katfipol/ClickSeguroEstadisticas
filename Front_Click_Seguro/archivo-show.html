@@ -113,37 +113,53 @@
                 document.getElementById('descripcion-riesgo').textContent = descripcionesArchivo[nivel]
                     || 'VirusTotal no conoce este archivo. Eso no significa que sea seguro: sé cauteloso.';
                 
-                document.getElementById('file-name').textContent = file.nombre;
-                document.getElementById('file-size').textContent = (file.tamano / 1024).toFixed(1) + ' KB';
+                const claseTextoRiesgo = UI.obtenerClaseTextoRiesgo(nivel);
+
+                const fileNameEl = document.getElementById('file-name');
+                fileNameEl.textContent = file.nombre;
+                fileNameEl.className = claseTextoRiesgo;
+
+                // Mostrar en MB si supera 1 MB, de lo contrario en KB
+                const tamanoKb = file.tamano / 1024;
+                document.getElementById('file-size').textContent = tamanoKb >= 1024
+                    ? (tamanoKb / 1024).toFixed(2) + ' MB'
+                    : tamanoKb.toFixed(1) + ' KB';
+
                 document.getElementById('file-hash').textContent = file.sha256;
                 document.getElementById('file-date').textContent = new Date(file.created_at).toLocaleString();
-                document.getElementById('file-detections').textContent = (file.detecciones ?? 0) + ' motores';
+
+                const detectionsEl = document.getElementById('file-detections');
+                detectionsEl.textContent = (file.detecciones ?? 0) + ' motores';
+                detectionsEl.className = claseTextoRiesgo;
 
                 if (file.detalles && file.detalles.length > 0) {
                     document.getElementById('details-section').style.display = 'block';
                     const tbody = document.querySelector('#detalles-table tbody');
+                    const detallesOrdenados = UI.ordenarDetallesPorRiesgo(file.detalles);
                     let html = '';
-                    file.detalles.forEach(d => {
+                    detallesOrdenados.forEach(d => {
+                        const infoMotor = UI.clasificarResultadoMotor(d.resultado, d.categoria);
                         html += `
-                            <tr>
-                                <td>${d.motor || 'Resumen General'}</td>
-                                <td>${d.resultado || '—'}</td>
+                            <tr class="${infoMotor.claseFila}">
+                                <td class="mono">${d.motor || 'Resumen General'}</td>
+                                <td><span class="badge ${infoMotor.claseBadge}">${(d.resultado || '—').toUpperCase()}</span></td>
                                 <td>${d.categoria || '—'}</td>
                             </tr>
                         `;
                     });
                     tbody.innerHTML = html;
                 }
+
                 document.getElementById('pdf-btn').addEventListener('click', async function() {
-                UI.lockButton(this, 'Generando PDF...');
-                try {
-                    await Files.downloadReport(fileId);
-                } catch (err) {
-                    await UI.alert('ERROR', err.message);
-                } finally {
-                    UI.unlockButton(this);
-                }
-           });
+                    UI.lockButton(this, 'Generando PDF...');
+                    try {
+                        await Files.downloadReport(fileId);
+                    } catch (err) {
+                        await UI.alert('ERROR', err.message);
+                    } finally {
+                        UI.unlockButton(this);
+                    }
+                });
             } catch (error) {
                 document.getElementById('loading').innerHTML = `<p class="error">${error.message || 'Error al cargar el resultado del archivo'}</p>`;
             }

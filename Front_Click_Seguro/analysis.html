@@ -23,6 +23,7 @@
             <a href="passwords.html">CONTRASEÑAS</a>
             <a href="history.html">HISTORIAL</a>
             <a href="estadisticas.html">MIS STATS</a>
+            <a href="globales.html">GLOBALES</a>
             <a href="reportar.html">REPORTAR</a>
         </nav>
         <div style="display:flex; align-items:center; gap:1rem;">
@@ -82,8 +83,9 @@
                 <a href="history.html" class="btn sec">Volver al historial</a>
                 <a id="domain-btn" href="dominios.html" class="btn sec">Ver ficha del dominio</a>
                 <button id="pdf-btn" class="btn sec">Descargar Informe PDF</button>
+                <a id="report-btn" href="reportar.html" class="btn peligro">Reportar URL</a>
                 <button id="reanalyze-btn" class="btn">Reanalizar</button>
-         </div>
+            </div>
         </div>
     </main>
 
@@ -106,72 +108,99 @@
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('content').style.display = 'block';
 
-                const nivel = analysis.tipo_riesgo ? analysis.tipo_riesgo.nombre.toLowerCase() : 'desconocido';
+                const esFallido = analysis.estado === 'fallido';
+                const nivel = analysis.tipo_riesgo
+                    ? analysis.tipo_riesgo.nombre.toLowerCase()
+                    : (esFallido ? 'peligroso' : 'desconocido');
+
                 const veredictoEl = document.getElementById('veredicto');
                 veredictoEl.className = `panel riesgo-${nivel}`;
                 
                 document.getElementById('nivel-riesgo').textContent = analysis.tipo_riesgo
                     ? analysis.tipo_riesgo.nombre.toUpperCase()
-                    : (analysis.estado === 'fallido' ? 'FALLIDO' : 'EN PROCESO');
+                    : (esFallido ? 'FALLIDO' : 'EN PROCESO');
 
                 document.getElementById('descripcion-riesgo').textContent = analysis.error
                     || descripcionesRiesgo[nivel]
                     || 'El análisis aún no cuenta con información definitiva.';
                 
-                // HU-04: Mostrar si fue un enlace acortado y cuál es su destino final
-             if (analysis.url_final && analysis.url_final.url !== analysis.url.url) {
-                 document.getElementById('label-url-original').style.display = 'block';
-                 const origEl = document.getElementById('url-original');
-                 origEl.style.display = 'block';
-                 origEl.textContent = analysis.url.url;
-                 document.getElementById('url-analizada').textContent = analysis.url_final.url;
-             } else {
-                 document.getElementById('url-analizada').textContent = analysis.url?.url || '—';
-             }
+                const claseTextoRiesgo = UI.obtenerClaseTextoRiesgo(nivel);
+                const urlAnalizadaEl = document.getElementById('url-analizada');
+                const urlFinalTexto = analysis.url_final?.url || analysis.url?.url || '—';
 
-             const domNombre = analysis.url_final?.dominio || analysis.url?.dominio || '';
-             document.getElementById('dominio').textContent = domNombre || '—';
-             document.getElementById('fecha').textContent = new Date(analysis.created_at).toLocaleString();
-             document.getElementById('detecciones').textContent = (analysis.detecciones ?? 0) + ' motores';
+                // HU-04: Mostrar si fue un enlace acortado y cual es su destino final
+                if (analysis.url_final && analysis.url_final.url !== analysis.url.url) {
+                    document.getElementById('label-url-original').style.display = 'block';
+                    const origEl = document.getElementById('url-original');
+                    origEl.style.display = 'block';
+                    origEl.innerHTML = `${analysis.url.url} <span class="badge riesgo-sospechoso" style="margin-left:0.5rem;">Redirección expandida</span>`;
+                    urlAnalizadaEl.textContent = analysis.url_final.url;
+                } else {
+                    urlAnalizadaEl.textContent = urlFinalTexto;
+                }
+                urlAnalizadaEl.className = `mono ${claseTextoRiesgo}`;
 
-             // HU-12: Enlace directo a la ficha de este dominio
-             if (domNombre) {
-                 document.getElementById('domain-btn').href = `dominios.html?nombre=${encodeURIComponent(domNombre)}`;
-             }
+                const domNombre = analysis.url_final?.dominio || analysis.url?.dominio || '';
+                document.getElementById('dominio').textContent = domNombre || '—';
+                document.getElementById('fecha').textContent = new Date(analysis.created_at).toLocaleString();
 
-             // HU-07: Comparación con el análisis anterior si es un reanálisis
-             if (analysis.analisis_anterior) {
-                 const ant = analysis.analisis_anterior;
-                 const actualNombre = analysis.tipo_riesgo?.nombre || 'Desconocido';
-                 const cambio = ant.tipo_riesgo !== actualNombre
-                     ? `El nivel de riesgo CAMBIÓ de "${ant.tipo_riesgo || 'Sin datos'}" a "${actualNombre}".`
-                     : `El nivel de riesgo SE MANTIENE en "${actualNombre}".`;
-                 document.getElementById('comparacion-anterior').style.display = 'block';
-                 document.getElementById('texto-comparacion').textContent =
-                     `Análisis previo (${new Date(ant.created_at).toLocaleString()}): ${ant.tipo_riesgo || '—'} (${ant.detecciones ?? 0} motores). ${cambio}`;
-             }
+                const numDetecciones = analysis.detecciones ?? 0;
+                const deteccionesEl = document.getElementById('detecciones');
+                deteccionesEl.textContent = `${numDetecciones} motores`;
+                deteccionesEl.className = claseTextoRiesgo;
 
-             // HU-17: Descargar PDF con bloqueo de botón
-             document.getElementById('pdf-btn').addEventListener('click', async function() {
-                 UI.lockButton(this, 'Generando PDF...');
-                 try {
-                     await Analyses.downloadReport(analysisId);
-                 } catch (err) {
-                     await UI.alert('ERROR', err.message);
-                 } finally {
-                     UI.unlockButton(this);
-                 }
-             });
+                // HU-12: Enlace directo a la ficha de este dominio
+                if (domNombre) {
+                    document.getElementById('domain-btn').href = `dominios.html?nombre=${encodeURIComponent(domNombre)}`;
+                }
 
+                // HU-09: Precargar la URL analizada en el boton de Reportar URL
+                if (urlFinalTexto && urlFinalTexto !== '—') {
+                    document.getElementById('report-btn').href = `reportar.html?url=${encodeURIComponent(urlFinalTexto)}`;
+                }
+
+                // HU-07: Comparacion visual con el analisis anterior si es un reanalisis
+                if (analysis.analisis_anterior) {
+                    const ant = analysis.analisis_anterior;
+                    const antNombre = ant.tipo_riesgo || 'Sin datos';
+                    const actualNombre = analysis.tipo_riesgo?.nombre || 'Desconocido';
+                    const claseBadgeAnt = `riesgo-${antNombre.toLowerCase()}`;
+                    const claseBadgeAct = `riesgo-${nivel}`;
+
+                    const resumenCambio = antNombre.toLowerCase() !== actualNombre.toLowerCase()
+                        ? `El nivel de riesgo <strong>CAMBIÓ</strong> de <span class="badge ${claseBadgeAnt}">${antNombre.toUpperCase()}</span> a <span class="badge ${claseBadgeAct}">${actualNombre.toUpperCase()}</span>.`
+                        : `El nivel de riesgo <strong>SE MANTIENE</strong> en <span class="badge ${claseBadgeAct}">${actualNombre.toUpperCase()}</span>.`;
+
+                    document.getElementById('comparacion-anterior').style.display = 'block';
+                    document.getElementById('texto-comparacion').innerHTML =
+                        `Análisis previo (${new Date(ant.created_at).toLocaleString()}): <strong>${ant.detecciones ?? 0} motores</strong> detectados.<br>${resumenCambio}`;
+                }
+
+                // HU-17: Descargar PDF con bloqueo de boton
+                document.getElementById('pdf-btn').addEventListener('click', async function() {
+                    UI.lockButton(this, 'Generando PDF...');
+                    try {
+                        await Analyses.downloadReport(analysisId);
+                    } catch (err) {
+                        await UI.alert('ERROR', err.message);
+                    } finally {
+                        UI.unlockButton(this);
+                    }
+                });
+
+                // HU-05: Tabla de motores ordenada por nivel de amenaza y con etiquetas de color
                 const tbody = document.querySelector('#detalles-table tbody');
                 if (analysis.detalles && analysis.detalles.length > 0) {
+                    const detallesOrdenados = UI.ordenarDetallesPorRiesgo(analysis.detalles);
                     let html = '';
-                    analysis.detalles.forEach(d => {
+                    detallesOrdenados.forEach(d => {
+                        const textoCategoria = d.categoria || d.descripcion || '—';
+                        const infoMotor = UI.clasificarResultadoMotor(d.resultado, textoCategoria);
                         html += `
-                            <tr>
-                                <td>${d.motor || 'Resumen General'}</td>
-                                <td>${d.resultado || '—'}</td>
-                                <td>${d.categoria || d.descripcion || '—'}</td>
+                            <tr class="${infoMotor.claseFila}">
+                                <td class="mono">${d.motor || 'Resumen General'}</td>
+                                <td><span class="badge ${infoMotor.claseBadge}">${(d.resultado || '—').toUpperCase()}</span></td>
+                                <td>${textoCategoria}</td>
                             </tr>
                         `;
                     });
