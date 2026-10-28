@@ -463,6 +463,70 @@ export const UI = {
                 overlay.remove();
             }
         };
+    },
+    // Devuelve la clase CSS de color segun el nivel de riesgo
+    obtenerClaseTextoRiesgo(nivel = '') {
+        const valor = (nivel || '').toLowerCase();
+        if (valor.includes('peligroso') || valor.includes('fallido')) return 'texto-riesgo--peligroso';
+        if (valor.includes('sospechoso') || valor.includes('medio')) return 'texto-riesgo--sospechoso';
+        if (valor.includes('seguro')) return 'texto-riesgo--seguro';
+        return 'texto-riesgo--desconocido';
+    },
+
+    // Clasifica el resultado individual de un motor o categoria para colorearlo y ordenarlo
+    clasificarResultadoMotor(resultado = '', categoria = '') {
+        const texto = `${resultado} ${categoria}`.toLowerCase();
+        if (
+            texto.includes('malicious') || texto.includes('malicioso') ||
+            texto.includes('peligroso') || texto.includes('phishing') ||
+            texto.includes('suplantaci') || texto.includes('malware') ||
+            texto.includes('estafa') || texto.includes('fraude') ||
+            texto.includes('ransomware') || texto.includes('troyano') ||
+            texto.includes('spyware') || texto.includes('botnet')
+        ) {
+            return { nivel: 'peligroso', peso: 3, claseFila: 'fila-riesgo--peligroso', claseBadge: 'riesgo-peligroso' };
+        }
+        if (
+            texto.includes('suspicious') || texto.includes('sospechoso') ||
+            texto.includes('riesgo') || texto.includes('spam') ||
+            texto.includes('correo no deseado') || texto.includes('adware') ||
+            texto.includes('miner')
+        ) {
+            return { nivel: 'sospechoso', peso: 2, claseFila: 'fila-riesgo--sospechoso', claseBadge: 'riesgo-sospechoso' };
+        }
+        if (texto.includes('clean') || texto.includes('harmless') || texto.includes('limpio') || texto.includes('seguro') || texto.includes('inofensivo')) {
+            return { nivel: 'seguro', peso: 1, claseFila: '', claseBadge: 'riesgo-seguro' };
+        }
+        return { nivel: 'desconocido', peso: 0, claseFila: '', claseBadge: 'riesgo-desconocido' };
+    },
+
+    // Ordena la lista de motores poniendo primero los peligrosos y sospechosos
+    ordenarDetallesPorRiesgo(detalles = []) {
+        return [...detalles].sort((a, b) => {
+            const infoA = this.clasificarResultadoMotor(a.resultado, a.categoria || a.descripcion);
+            const infoB = this.clasificarResultadoMotor(b.resultado, b.categoria || b.descripcion);
+            return infoB.peso - infoA.peso;
+        });
+    },
+    // Traduce al espanol cualquier categoria o resultado en ingles de VirusTotal
+    traducirTerminoSeguridad(texto = '') {
+        if (!texto || texto === '—') return '—';
+        const clave = String(texto).trim().toLowerCase();
+        const mapa = {
+            'malicious': 'Malicioso',
+            'suspicious': 'Sospechoso',
+            'phishing': 'Phishing / Suplantación',
+            'malware': 'Malware / Código dañino',
+            'harmless': 'Inofensivo / Seguro',
+            'clean': 'Limpio',
+            'undetected': 'Sin detecciones',
+            'unrated': 'Sin calificar',
+            'spam': 'Spam / Correo no deseado',
+            'scam': 'Estafa / Fraude',
+            'ransomware': 'Ransomware',
+            'trojan': 'Troyano'
+        };
+        return mapa[clave] || texto;
     }
 };
 
