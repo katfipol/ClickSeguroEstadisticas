@@ -84,9 +84,12 @@
                 const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
                 
                 if (file.size > 50 * 1024 * 1024) {
-                    msg.textContent = 'El archivo supera el límite de 50 MB';
+                    msg.textContent = 'El archivo supera el límite permitido de 50 MB.';
                     msg.style.color = 'var(--cyber-red)';
                     selectedFile = null;
+                    hashEl.textContent = '';
+                    label.textContent = 'Haz clic o arrastra un archivo aquí';
+                    zone.classList.remove('file-selected');
                     zone.classList.add('input-error');
                     return;
                 }
