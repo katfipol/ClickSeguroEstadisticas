@@ -51,8 +51,6 @@
     </main>
 
     <script type="module">
-
-        import { Auth, Files, UI } from './js/api.js';
         import { Auth, Reports, UI } from './js/api.js';
 
         async function checkAuth() {
@@ -61,22 +59,39 @@
             else document.getElementById('user-name').textContent = user.nombre;
         }
 
+        // Si se recibio ?url=... desde la vista de resultados, precargarla en el campo
+        const urlParam = new URLSearchParams(window.location.search).get('url');
+        if (urlParam) {
+            document.getElementById('url').value = urlParam;
+        }
+
         document.getElementById('report-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const url = document.getElementById('url').value.trim();
+            const urlInput = document.getElementById('url');
+            const url = urlInput.value.trim();
             const motivo = document.getElementById('motivo').value.trim();
             const msgEl = document.getElementById('report-msg');
             const submitBtn = this.querySelector('button[type="submit"]');
             
             if (!url) {
-                document.getElementById('url').classList.add('input-error');
+                urlInput.classList.add('input-error');
                 msgEl.textContent = 'Ingresa la URL sospechosa que deseas reportar.';
+                msgEl.style.color = 'var(--cyber-red)';
+                return;
+            }
+
+            // HU-09: Validar que la URL reportada tenga formato valido antes de registrar
+            const esUrlValida = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z0-9-]{2,}(\/.*)?$/i.test(url);
+            if (!esUrlValida) {
+                urlInput.classList.add('input-error');
+                msgEl.textContent = 'El formato de la URL no es valido. Ejemplo: https://sitio-sospechoso.com';
                 msgEl.style.color = 'var(--cyber-red)';
                 return;
             }
 
             UI.lockButton(submitBtn, 'Enviando...');
             try {
+                msgEl.style.color = 'var(--cyber-cyan)';
                 msgEl.textContent = 'Enviando reporte...';
                 await Reports.store(url, motivo);
                 msgEl.textContent = '';

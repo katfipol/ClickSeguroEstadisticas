@@ -23,6 +23,7 @@
             <a href="passwords.html">CONTRASEÑAS</a>
             <a href="history.html" class="active">HISTORIAL</a>
             <a href="estadisticas.html">MIS STATS</a>
+            <a href="globales.html">GLOBALES</a>
             <a href="reportar.html">REPORTAR</a>
         </nav>
         <div style="display:flex; align-items:center; gap:1rem;">
@@ -92,12 +93,28 @@
                 } else {
                     let html = '';
                     data.forEach(analysis => {
-                        const riesgoClass = analysis.tipo_riesgo ? `riesgo-${analysis.tipo_riesgo.nombre.toLowerCase()}` : '';
-                        const riesgoText = analysis.tipo_riesgo ? analysis.tipo_riesgo.nombre : (analysis.estado === 'fallido' ? 'Falló' : 'En curso');
+                        const esFallido = analysis.estado === 'fallido';
+                        const nivel = analysis.tipo_riesgo
+                            ? analysis.tipo_riesgo.nombre.toLowerCase()
+                            : (esFallido ? 'peligroso' : 'desconocido');
+                        const riesgoClass = `riesgo-${nivel}`;
+                        const riesgoText = analysis.tipo_riesgo
+                            ? analysis.tipo_riesgo.nombre.toUpperCase()
+                            : (esFallido ? 'FALLÓ' : 'EN CURSO');
+                        const claseTexto = UI.obtenerClaseTextoRiesgo(nivel);
+                        const claseFila = nivel === 'peligroso'
+                            ? 'fila-riesgo--peligroso'
+                            : (nivel === 'sospechoso' ? 'fila-riesgo--sospechoso' : '');
+
+                        const urlOriginal = analysis.url?.url || '—';
+                        const urlFinal = analysis.url_final?.url;
+                        const bloqueUrl = (urlFinal && urlFinal !== urlOriginal)
+                            ? `${urlFinal}<br><small style="color:var(--cyber-yellow);">↳ Acortado desde: ${urlOriginal}</small>`
+                            : urlOriginal;
                         
                         html += `
-                            <tr id="row-analysis-${analysis.id_analisis}">
-                                <td class="mono" style="vertical-align:middle; word-break:break-all;">${analysis.url.url}</td>
+                            <tr id="row-analysis-${analysis.id_analisis}" class="${claseFila}">
+                                <td class="mono ${claseTexto}" style="vertical-align:middle; word-break:break-all;">${bloqueUrl}</td>
                                 <td style="vertical-align:middle; white-space:nowrap;">${new Date(analysis.created_at).toLocaleString()}</td>
                                 <td style="vertical-align:middle;"><span class="badge ${riesgoClass}">${riesgoText}</span></td>
                                 <td style="vertical-align:middle; white-space:nowrap;">
@@ -141,12 +158,18 @@
                 } else {
                     let fHtml = '';
                     filesData.forEach(f => {
-                        const rClass = f.tipo_riesgo ? `riesgo-${f.tipo_riesgo.nombre.toLowerCase()}` : '';
-                        const rText = f.tipo_riesgo ? f.tipo_riesgo.nombre : 'Desconocido';
+                        const nivelArchivo = f.tipo_riesgo ? f.tipo_riesgo.nombre.toLowerCase() : 'desconocido';
+                        const rClass = `riesgo-${nivelArchivo}`;
+                        const rText = f.tipo_riesgo ? f.tipo_riesgo.nombre.toUpperCase() : 'SIN INFORMACIÓN';
+                        const claseTextoArchivo = UI.obtenerClaseTextoRiesgo(nivelArchivo);
+                        const claseFilaArchivo = nivelArchivo === 'peligroso'
+                            ? 'fila-riesgo--peligroso'
+                            : (nivelArchivo === 'sospechoso' ? 'fila-riesgo--sospechoso' : '');
+
                         fHtml += `
-                            <tr id="row-file-${f.id_archivo}">
-                                <td style="vertical-align:middle;">${f.nombre}</td>
-                                <td class="mono" style="vertical-align:middle;">${f.sha256.substring(0, 16)}...</td>
+                            <tr id="row-file-${f.id_archivo}" class="${claseFilaArchivo}">
+                                <td class="${claseTextoArchivo}" style="vertical-align:middle;">${f.nombre}</td>
+                                <td class="mono" style="vertical-align:middle;" title="${f.sha256}">${f.sha256.substring(0, 16)}...</td>
                                 <td style="vertical-align:middle; white-space:nowrap;">${new Date(f.created_at).toLocaleString()}</td>
                                 <td style="vertical-align:middle;"><span class="badge ${rClass}">${rText}</span></td>
                                 <td style="vertical-align:middle; white-space:nowrap;">

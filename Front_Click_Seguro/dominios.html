@@ -23,10 +23,7 @@
             <a href="passwords.html">CONTRASEÑAS</a>
             <a href="history.html">HISTORIAL</a>
             <a href="estadisticas.html">MIS STATS</a>
-<<<<<<< Updated upstream
-=======
             <a href="globales.html">GLOBALES</a>
->>>>>>> Stashed changes
             <a href="reportar.html">REPORTAR</a>
         </nav>
         <div style="display:flex; align-items:center; gap:1rem;">
@@ -81,8 +78,12 @@
                         </thead>
                         <tbody id="previos-table"></tbody>
                     </table>
-             </div>
-         </div>
+                </div>
+            </div>
+            <div class="acciones" style="margin-top:1.25rem;">
+                <a id="analyze-domain-btn" href="dashboard.html" class="btn">Analizar este sitio ahora</a>
+            </div>
+        </div>
         </div>
     </main>
 
@@ -106,6 +107,12 @@
 
                 document.getElementById('domain-name').textContent = data.nombre;
                 document.getElementById('domain-type').textContent = data.ficha.tipo === 'dominio' ? 'Dominio' : 'Dirección IP';
+                document.getElementById('analyze-domain-btn').href = `dashboard.html?url=${encodeURIComponent('https://' + data.nombre)}`;
+
+                const creationEl = document.getElementById('domain-creation');
+                const reputationEl = document.getElementById('domain-reputation');
+                creationEl.className = '';
+                reputationEl.className = '';
                 
                 if (data.ficha.tipo === 'dominio') {
                     const dom = data.ficha.dominio || {};
@@ -114,36 +121,52 @@
                         ? Math.floor((Date.now() - new Date(fechaCreacion).getTime()) / (1000 * 60 * 60 * 24))
                         : null;
 
-                    document.getElementById('domain-creation').textContent = fechaCreacion
-                        ? `${fechaCreacion} (${dias} días de antigüedad)`
-                        : 'No disponible';
+                    if (fechaCreacion && dias !== null) {
+                        if (dias < 30) {
+                            creationEl.className = 'texto-riesgo--peligroso';
+                            creationEl.innerHTML = `${fechaCreacion} (${dias} días de antigüedad) <span class="badge riesgo-peligroso" style="margin-left:0.5rem;">RECIENTE (&lt; 30 DÍAS)</span>`;
+                        } else {
+                            creationEl.className = 'texto-riesgo--seguro';
+                            creationEl.textContent = `${fechaCreacion} (${dias} días de antigüedad)`;
+                        }
+                    } else {
+                        creationEl.textContent = 'No disponible';
+                    }
+
                     document.getElementById('domain-registrar').textContent = dom.registrador || 'No disponible';
                     document.getElementById('domain-ip').textContent = dom.ip || 'No disponible';
                     document.getElementById('domain-country').textContent = dom.pais || 'No disponible';
-                    document.getElementById('domain-reputation').textContent = dom.reputacion ?? 'No disponible';
+
+                    const rep = dom.reputacion;
+                    reputationEl.textContent = rep ?? 'No disponible';
+                    if (typeof rep === 'number') {
+                        reputationEl.className = rep < 0 ? 'texto-riesgo--peligroso' : (rep > 0 ? 'texto-riesgo--seguro' : 'texto-riesgo--sospechoso');
+                    }
 
                     const warning = document.getElementById('domain-warning');
                     if (dias !== null && dias < 30) {
-                        warning.textContent = `⚠ Dominio muy reciente: tiene solo ${dias} días de antigüedad. Extrema las precauciones.`;
+                        warning.textContent = `[ALERTA] Dominio muy reciente: tiene solo ${dias} días de antigüedad. Los sitios de phishing suelen crearse pocos días antes del ataque.`;
                         warning.style.display = 'block';
                     } else {
                         warning.style.display = 'none';
                     }
 
-                    // Mostrar análisis previos del usuario sobre este dominio (HU-12)
+                    // Mostrar analisis previos del usuario sobre este dominio (HU-12)
                     const previosSec = document.getElementById('previos-section');
                     const previosTbody = document.getElementById('previos-table');
                     if (data.previos && data.previos.length > 0) {
                         previosSec.style.display = 'block';
                         previosTbody.innerHTML = data.previos.map(a => {
-                            const rClass = a.tipo_riesgo ? `riesgo-${a.tipo_riesgo.nombre.toLowerCase()}` : '';
-                            const rNombre = a.tipo_riesgo ? a.tipo_riesgo.nombre : '—';
+                            const nivel = a.tipo_riesgo ? a.tipo_riesgo.nombre.toLowerCase() : 'desconocido';
+                            const rClass = `riesgo-${nivel}`;
+                            const rNombre = a.tipo_riesgo ? a.tipo_riesgo.nombre.toUpperCase() : '—';
+                            const claseTexto = UI.obtenerClaseTextoRiesgo(nivel);
                             return `
                                 <tr>
-                                    <td class="mono">${a.url?.url || '—'}</td>
+                                    <td class="mono ${claseTexto}">${a.url?.url || '—'}</td>
                                     <td>${new Date(a.created_at).toLocaleString()}</td>
                                     <td><span class="badge ${rClass}">${rNombre}</span></td>
-                                    <td><a href="analysis.html?id=${a.id_analisis}" style="color:var(--cyber-cyan);">Ver</a></td>
+                                    <td><a href="analysis.html?id=${a.id_analisis}" class="btn sec" style="padding:0.25rem 0.65rem; font-size:0.75rem;">Ver detalle</a></td>
                                 </tr>
                             `;
                         }).join('');
@@ -152,11 +175,17 @@
                     }
                 } else {
                     const info = data.ficha.datos || {};
-                    document.getElementById('domain-creation').textContent = 'N/A';
+                    creationEl.textContent = 'No disponible (Consulta de IP)';
                     document.getElementById('domain-registrar').textContent = info.propietario || 'No disponible';
                     document.getElementById('domain-ip').textContent = data.nombre;
                     document.getElementById('domain-country').textContent = info.pais || 'No disponible';
-                    document.getElementById('domain-reputation').textContent = info.reputacion ?? 'No disponible';
+
+                    const repIp = info.reputacion;
+                    reputationEl.textContent = repIp ?? 'No disponible';
+                    if (typeof repIp === 'number') {
+                        reputationEl.className = repIp < 0 ? 'texto-riesgo--peligroso' : (repIp > 0 ? 'texto-riesgo--seguro' : 'texto-riesgo--sospechoso');
+                    }
+
                     document.getElementById('domain-warning').style.display = 'none';
                     document.getElementById('previos-section').style.display = 'none';
                 }
@@ -166,7 +195,6 @@
                 UI.unlockButton(submitBtn);
             }
         }
-
         document.getElementById('domain-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const nombre = document.getElementById('nombre').value.trim();
