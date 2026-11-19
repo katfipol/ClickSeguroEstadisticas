@@ -76,6 +76,7 @@
         const zone = document.getElementById('doc-drop-zone');
         const msg = document.getElementById('doc-msg');
         const uploadBtn = document.getElementById('upload-btn');
+        input.dataset.validacionPropia = 'true';
 
         input.addEventListener('change', function() {
             if (this.files[0]) {
@@ -89,6 +90,8 @@
                     msg.textContent = 'Solo se aceptan archivos PDF o TXT';
                     msg.style.color = 'var(--cyber-red)';
                     zone.classList.remove('file-selected');
+                    label.textContent = 'Haz clic o arrastra un documento aquí';
+                    this.value = '';
                     return;
                 }
                 if (file.size > 5 * 1024 * 1024) {
@@ -98,6 +101,7 @@
                     msg.textContent = 'El documento supera el límite permitido de 5 MB.';
                     msg.style.color = 'var(--cyber-red)';
                     zone.classList.remove('file-selected');
+                    this.value = '';
                     return;
                 }
                 zone.classList.remove('input-error');
