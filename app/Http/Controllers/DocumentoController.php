@@ -86,7 +86,8 @@ class DocumentoController extends Controller
     public function show(Request $request, int $id): JsonResponse
     {
         $documento = $request->user()->documentos()->findOrFail($id);
-       $analisis = $documento->analisis()->with(['url', 'urlFinal', 'tipoRiesgo'])->orderBy('id_analisis')->get();
+        $analisis = $documento->analisis()->with(['url', 'tipoRiesgo'])->orderBy('id_analisis')->get();
+
         $resumen = [
             'seguro'     => $analisis->where('tipoRiesgo.nombre', 'Seguro')->count(),
             'sospechoso' => $analisis->where('tipoRiesgo.nombre', 'Sospechoso')->count(),
@@ -140,10 +141,7 @@ class DocumentoController extends Controller
 
     private function extraerEnlaces(string $texto): array
     {
-        $acortadores = implode('|', array_map(fn (string $d) => preg_quote($d, '~'), UrlService::ACORTADORES));
-        $patron = '~(?:(?:https?://|www\.)[^\s<>"\'\\\\\)\]\}]+|\b(?:(?:' . $acortadores . ')|(?:[a-z0-9-]+\.)+[a-z]{2,})/[^\s<>"\'\\\\\)\]\}]*)~iu';
-
-        preg_match_all($patron, $texto, $m);
+        preg_match_all('~(?:https?://|www\.)[^\s<>"\'\\\\\)\]\}]+~iu', $texto, $m);
         $salida = [];
         foreach ($m[0] as $crudo) {
             try {

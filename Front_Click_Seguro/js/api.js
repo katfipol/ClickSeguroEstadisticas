@@ -100,7 +100,6 @@ export const Auth = {
             status: response.status,
             json: async () => ({
                 message: primerError || json.message,
-                errors: json.errors || null,
                 usuario: json.data?.usuario
             })
         };
@@ -464,122 +463,6 @@ export const UI = {
                 overlay.remove();
             }
         };
-    },
-    // Devuelve la clase CSS de color segun el nivel de riesgo
-    obtenerClaseTextoRiesgo(nivel = '') {
-        const valor = (nivel || '').toLowerCase();
-        if (valor.includes('peligroso') || valor.includes('fallido')) return 'texto-riesgo--peligroso';
-        if (valor.includes('sospechoso') || valor.includes('medio')) return 'texto-riesgo--sospechoso';
-        if (valor.includes('seguro')) return 'texto-riesgo--seguro';
-        return 'texto-riesgo--desconocido';
-    },
-
-    // Clasifica el resultado individual de un motor o categoria para colorearlo y ordenarlo
-    clasificarResultadoMotor(resultado = '', categoria = '') {
-        const texto = `${resultado} ${categoria}`.toLowerCase();
-        if (
-            texto.includes('malicious') || texto.includes('malicioso') ||
-            texto.includes('peligroso') || texto.includes('phishing') ||
-            texto.includes('suplantaci') || texto.includes('malware') ||
-            texto.includes('estafa') || texto.includes('fraude') ||
-            texto.includes('ransomware') || texto.includes('troyano') ||
-            texto.includes('spyware') || texto.includes('botnet')
-        ) {
-            return { nivel: 'peligroso', peso: 3, claseFila: 'fila-riesgo--peligroso', claseBadge: 'riesgo-peligroso' };
-        }
-        if (
-            texto.includes('suspicious') || texto.includes('sospechoso') ||
-            texto.includes('riesgo') || texto.includes('spam') ||
-            texto.includes('correo no deseado') || texto.includes('adware') ||
-            texto.includes('miner')
-        ) {
-            return { nivel: 'sospechoso', peso: 2, claseFila: 'fila-riesgo--sospechoso', claseBadge: 'riesgo-sospechoso' };
-        }
-        if (texto.includes('clean') || texto.includes('harmless') || texto.includes('limpio') || texto.includes('seguro') || texto.includes('inofensivo')) {
-            return { nivel: 'seguro', peso: 1, claseFila: '', claseBadge: 'riesgo-seguro' };
-        }
-        return { nivel: 'desconocido', peso: 0, claseFila: '', claseBadge: 'riesgo-desconocido' };
-    },
-
-    // Ordena la lista de motores poniendo primero los peligrosos y sospechosos
-    ordenarDetallesPorRiesgo(detalles = []) {
-        return [...detalles].sort((a, b) => {
-            const infoA = this.clasificarResultadoMotor(a.resultado, a.categoria || a.descripcion);
-            const infoB = this.clasificarResultadoMotor(b.resultado, b.categoria || b.descripcion);
-            return infoB.peso - infoA.peso;
-        });
-    },
-    // Traduce al espanol cualquier categoria o resultado en ingles de VirusTotal
-    traducirTerminoSeguridad(texto = '') {
-        if (!texto || texto === '—') return '—';
-        const clave = String(texto).trim().toLowerCase();
-        const mapa = {
-            'malicious': 'Malicioso',
-            'suspicious': 'Sospechoso',
-            'phishing': 'Phishing / Suplantación',
-            'malware': 'Malware / Código dañino',
-            'harmless': 'Inofensivo / Seguro',
-            'clean': 'Limpio',
-            'undetected': 'Sin detecciones',
-            'unrated': 'Sin calificar',
-            'spam': 'Spam / Correo no deseado',
-            'scam': 'Estafa / Fraude',
-            'ransomware': 'Ransomware',
-            'trojan': 'Troyano'
-        };
-        return mapa[clave] || texto;
-    },
-
-    // Muestra el error debajo de un campo especifico y aplica el borde rojo
-    mostrarErrorCampo(campo, mensaje, contenedorError = null) {
-        if (!campo) return;
-        campo.classList.add('input-error');
-        campo.setAttribute('aria-invalid', 'true');
-        const elError = contenedorError || document.getElementById(`${campo.id}-error`);
-        if (elError) {
-            elError.textContent = mensaje;
-        }
-    },
-
-    // Quita el borde rojo y el mensaje de error de un campo especifico
-    limpiarErrorCampo(campo, contenedorError = null) {
-        if (!campo) return;
-        campo.classList.remove('input-error');
-        campo.removeAttribute('aria-invalid');
-        const elError = contenedorError || document.getElementById(`${campo.id}-error`);
-        if (elError) {
-            elError.textContent = '';
-        }
-    },
-
-    // Ejecuta una regla sobre un campo y lo actualiza en tiempo real al escribir
-    vincularValidacionEnVivo(campo, validarFn, contenedorError = null) {
-        if (!campo || typeof validarFn !== 'function') return () => true;
-        campo.dataset.validacionPropia = 'true';
-
-        const evaluar = () => {
-            const mensajeError = validarFn(campo.value);
-            if (mensajeError) {
-                this.mostrarErrorCampo(campo, mensajeError, contenedorError);
-                return false;
-            }
-            this.limpiarErrorCampo(campo, contenedorError);
-            return true;
-        };
-
-        ['input', 'change'].forEach(evento => {
-            campo.addEventListener(evento, () => {
-                // Reevalua automaticamente si el campo ya fue validado o tenia error
-                if (campo.dataset.validado === 'true' || campo.classList.contains('input-error')) {
-                    evaluar();
-                }
-            });
-        });
-
-        return () => {
-            campo.dataset.validado = 'true';
-            return evaluar();
-        };
     }
 };
 
@@ -651,30 +534,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 3. Limpieza reactiva sin interferir con campos que tienen validacion en tiempo real
+    // 3. Limpieza reactiva: al escribir o adjuntar archivo, ocultar mensajes rojos automáticamente
     document.querySelectorAll('input, textarea, select').forEach(el => {
         ['input', 'change'].forEach(evento => {
             el.addEventListener(evento, () => {
-                // Ocultar alertas globales superiores del servidor (.alert-error) al volver a escribir
+                el.classList.remove('input-error');
+                const zone = el.closest('.file-upload-area');
+                if (zone) zone.classList.remove('input-error');
+
+                // Ocultar alertas rojas superiores (.alert-error) si están visibles
                 const container = el.closest('form, .panel, main') || document;
                 container.querySelectorAll('.alert-error').forEach(alerta => {
                     alerta.style.display = 'none';
                     alerta.textContent = '';
                 });
 
-                // Si el campo tiene su propia validacion en vivo, ella decide cuando despintarse
-                if (el.dataset.validacionPropia === 'true') {
-                    return;
-                }
-
-                el.classList.remove('input-error');
-                const zone = el.closest('.file-upload-area');
-                if (zone) zone.classList.remove('input-error');
-
-                const errorPropio = el.id ? document.getElementById(`${el.id}-error`) : null;
-                if (errorPropio) {
-                    errorPropio.textContent = '';
-                }
+                // Limpiar textos de error (.error) cercanos al campo
+                container.querySelectorAll('.error').forEach(err => {
+                    err.textContent = '';
+                });
             });
         });
     });

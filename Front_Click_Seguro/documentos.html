@@ -23,7 +23,6 @@
             <a href="passwords.html">CONTRASEÑAS</a>
             <a href="history.html">HISTORIAL</a>
             <a href="estadisticas.html">MIS STATS</a>
-            <a href="globales.html">GLOBALES</a>
             <a href="reportar.html">REPORTAR</a>
         </nav>
         <div style="display:flex; align-items:center; gap:1rem;">
@@ -76,7 +75,6 @@
         const zone = document.getElementById('doc-drop-zone');
         const msg = document.getElementById('doc-msg');
         const uploadBtn = document.getElementById('upload-btn');
-        input.dataset.validacionPropia = 'true';
 
         input.addEventListener('change', function() {
             if (this.files[0]) {
@@ -90,21 +88,14 @@
                     msg.textContent = 'Solo se aceptan archivos PDF o TXT';
                     msg.style.color = 'var(--cyber-red)';
                     zone.classList.remove('file-selected');
-                    label.textContent = 'Haz clic o arrastra un documento aquí';
-                    this.value = '';
                     return;
                 }
                 if (file.size > 5 * 1024 * 1024) {
-                    zone.classList.add('input-error');
-                    selectedFile = null;
-                    label.textContent = 'Haz clic o arrastra un documento aquí';
-                    msg.textContent = 'El documento supera el límite permitido de 5 MB.';
+                    msg.textContent = 'El archivo supera el límite de 5 MB';
                     msg.style.color = 'var(--cyber-red)';
                     zone.classList.remove('file-selected');
-                    this.value = '';
                     return;
                 }
-                zone.classList.remove('input-error');
 
                 selectedFile = file;
                 label.textContent = `${file.name} (${sizeMB} MB)`;

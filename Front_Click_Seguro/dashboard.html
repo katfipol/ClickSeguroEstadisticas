@@ -88,7 +88,6 @@
         }
 
         // Cargar análisis recientes
-        // Cargar analisis recientes con colores semanticos de riesgo
         async function loadRecentAnalyses() {
             try {
                 const data = await Analyses.getAll();
@@ -105,32 +104,28 @@
                     const estado = (analysis.estado || '').toLowerCase();
 
                     let textoEstado = 'Falló';
-                    let claseBadge = 'riesgo-peligroso';
-                    let claseTextoUrl = 'texto-riesgo--peligroso';
+                    let claseBadge = '';
 
                     if (nombreRiesgo.includes('seguro')) {
                         textoEstado = 'Seguro';
                         claseBadge = 'riesgo-seguro';
-                        claseTextoUrl = 'texto-riesgo--seguro';
                     } else if (nombreRiesgo.includes('sospechoso')) {
                         textoEstado = 'Sospechoso';
                         claseBadge = 'riesgo-sospechoso';
-                        claseTextoUrl = 'texto-riesgo--sospechoso';
                     } else if (nombreRiesgo.includes('peligroso')) {
                         textoEstado = 'Peligroso';
                         claseBadge = 'riesgo-peligroso';
-                        claseTextoUrl = 'texto-riesgo--peligroso';
                     } else if (estado === 'pendiente' || estado === 'procesando' || estado === 'en_curso') {
                         textoEstado = 'En curso';
-                        claseBadge = 'riesgo-desconocido';
-                        claseTextoUrl = 'texto-riesgo--desconocido';
+                    } else {
+                        textoEstado = 'Falló';
                     }
 
                     html += `
                         <div class="fila" style="justify-content:space-between; padding:0.75rem 0; border-bottom:1px solid var(--cyber-border);">
                             <div style="display:flex; align-items:center; gap:0.75rem; overflow:hidden;">
                                 <span class="badge ${claseBadge}">${textoEstado}</span>
-                                <a href="analysis.html?id=${analysis.id_analisis}" class="mono ${claseTextoUrl}" style="text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                <a href="analysis.html?id=${analysis.id_analisis}" class="mono" style="color:var(--cyber-text); text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                                     ${analysis.url?.url || '—'}
                                 </a>
                             </div>
@@ -143,58 +138,39 @@
                 
                 container.innerHTML = html;
             } catch (error) {
-                console.error('Error cargando analisis:', error);
+                console.error('Error cargando análisis:', error);
             }
         }
 
-        const urlInput = document.getElementById('url');
-        const errorDiv = document.getElementById('form-error');
-        const qrBtn = document.getElementById('qr-btn');
-        const qrInput = document.getElementById('qr-input');
-        const patronUrl = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z0-9-]{2,}(\/.*)?$/i;
-
-        qrInput.dataset.validacionPropia = 'true';
-
-        // Validacion en tiempo real del campo URL
-        const validarUrl = UI.vincularValidacionEnVivo(urlInput, (valor) => {
-            errorDiv.style.color = '';
-            const limpia = valor.trim();
-            if (!limpia) return 'Ingresa o pega una URL para analizar.';
-            if (!patronUrl.test(limpia)) {
-                return 'Formato de URL no válido. Ejemplo: https://ejemplo.com/ruta';
-            }
-            return '';
-        }, errorDiv);
-
-        // Si habia un mensaje verde de QR extraido, limpiarlo al editar manualmente
-        urlInput.addEventListener('input', () => {
-            if (!urlInput.classList.contains('input-error') && errorDiv.style.color === 'var(--cyber-green)') {
-                errorDiv.textContent = '';
-                errorDiv.style.color = '';
-            }
-        });
-
-        // Formulario de analisis
+        // Formulario de análisis
         document.getElementById('url-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            if (!validarUrl()) {
-                return;
-            }
-
+            
+            const urlInput = document.getElementById('url');
             const url = urlInput.value.trim();
+            const errorDiv = document.getElementById('form-error');
             const loadingState = document.getElementById('loading-state');
             const progressBar = document.getElementById('progress-bar');
             const timerSpan = document.getElementById('timer');
             const submitBtn = this.querySelector('button[type="submit"]');
             const pasteBtn = document.getElementById('paste-btn');
+            const qrBtn = document.getElementById('qr-btn');
+            
+            errorDiv.style.color = 'var(--cyber-red)';
+            if (!url) {
+            urlInput.classList.add('input-error');
+            errorDiv.textContent = 'Ingresa o pega una URL para analizar.';
+            return;
+        }
 
+            // Bloquear botones para evitar múltiples envíos
             UI.lockButton(submitBtn, 'Analizando...');
             pasteBtn.disabled = true;
             qrBtn.disabled = true;
 
             loadingState.style.display = 'block';
             errorDiv.textContent = '';
-
+            
             let seconds = 0;
             const timer = setInterval(() => {
                 seconds++;
@@ -205,10 +181,10 @@
 
             try {
                 const analysis = await Analyses.create(url);
-
+                
                 const checkStatus = async () => {
                     const status = await Analyses.getStatus(analysis.id_analisis);
-
+                    
                     if (status.terminado) {
                         clearInterval(timer);
                         progressBar.style.width = '100%';
@@ -219,40 +195,53 @@
                         setTimeout(checkStatus, 2000);
                     }
                 };
-
+                
                 setTimeout(checkStatus, 2000);
+                
             } catch (error) {
                 clearInterval(timer);
                 loadingState.style.display = 'none';
-                UI.mostrarErrorCampo(urlInput, error.message || 'Error al analizar la URL.', errorDiv);
+                errorDiv.textContent = error.message || 'Error al analizar la URL';
                 UI.unlockButton(submitBtn);
                 pasteBtn.disabled = false;
                 qrBtn.disabled = false;
             }
         });
 
-        // Boton pegar (HU-02)
+        // Botón pegar (HU-02)
         document.getElementById('paste-btn').addEventListener('click', async () => {
+            const urlInput = document.getElementById('url');
+            const errorDiv = document.getElementById('form-error');
             try {
                 const text = (await navigator.clipboard.readText()).trim();
-                errorDiv.style.color = '';
                 if (!text) {
-                    UI.mostrarErrorCampo(urlInput, 'Tu portapapeles está vacío.', errorDiv);
-                    return;
-                }
-                if (!patronUrl.test(text)) {
-                    UI.mostrarErrorCampo(urlInput, 'El texto copiado en tu portapapeles no es una URL válida.', errorDiv);
+                    urlInput.classList.add('input-error');
+                    errorDiv.style.color = 'var(--cyber-red)';
+                    errorDiv.textContent = 'Tu portapapeles está vacío.';
                     return;
                 }
 
+                const esUrlValida = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z0-9-]{2,}(\/.*)?$/i.test(text);
+                if (!esUrlValida) {
+                    urlInput.classList.add('input-error');
+                    errorDiv.style.color = 'var(--cyber-red)';
+                    errorDiv.textContent = 'El texto copiado en tu portapapeles no es una URL válida.';
+                    return;
+                }
+
+                urlInput.classList.remove('input-error');
                 urlInput.value = text;
-                UI.limpiarErrorCampo(urlInput, errorDiv);
+                errorDiv.textContent = '';
             } catch (err) {
                 await UI.alert('Portapapeles', 'No se pudo leer el portapapeles. Verifica los permisos de tu navegador.');
             }
         });
 
-        // Boton Cargar QR (HU-08)
+        // Botón Cargar QR (HU-08)
+        const qrBtn = document.getElementById('qr-btn');
+        const qrInput = document.getElementById('qr-input');
+        const errorDiv = document.getElementById('form-error');
+
         qrBtn.addEventListener('click', () => qrInput.click());
 
         qrInput.addEventListener('change', function() {
@@ -260,7 +249,6 @@
             if (!file) return;
 
             UI.lockButton(qrBtn, 'Leyendo QR...');
-            errorDiv.style.color = '';
             errorDiv.textContent = '';
 
             const reader = new FileReader();
@@ -277,37 +265,39 @@
                     const qrCode = window.jsQR(imageData.data, imageData.width, imageData.height);
 
                     UI.unlockButton(qrBtn);
-                    qrInput.value = '';
+                    qrInput.value = ''; // Limpiar para permitir subir la misma imagen de nuevo si se desea
 
                     if (!qrCode || !qrCode.data) {
-                        UI.mostrarErrorCampo(urlInput, 'No se detectó un código QR legible en la imagen seleccionada.', errorDiv);
+                        errorDiv.style.color = 'var(--cyber-red)';
+                        errorDiv.textContent = 'No se detectó un código QR legible en la imagen seleccionada.';
                         return;
                     }
 
                     const contenido = qrCode.data.trim();
-                    if (!patronUrl.test(contenido)) {
-                        UI.mostrarErrorCampo(
-                            urlInput,
-                            `El código QR fue leído ("${contenido.substring(0, 40)}"), pero no contiene una URL válida.`,
-                            errorDiv
-                        );
+                    // Validar que el texto extraído del QR tenga formato de URL o dominio (HU-08)
+                    const esUrlValida = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z0-9-]{2,}(\/.*)?$/i.test(contenido);
+
+                    if (!esUrlValida) {
+                        errorDiv.style.color = 'var(--cyber-red)';
+                        errorDiv.textContent = `El código QR fue leído ("${contenido.substring(0, 40)}"), pero no contiene una URL válida.`;
                         return;
                     }
 
-                    urlInput.value = contenido;
-                    UI.limpiarErrorCampo(urlInput, errorDiv);
+                    // Colocar la URL en el campo sin abrirla automáticamente (HU-08)
+                    document.getElementById('url').value = contenido;
                     errorDiv.style.color = 'var(--cyber-green)';
                     errorDiv.textContent = '✓ URL extraída del código QR correctamente. Haz clic en Analizar.';
                 };
                 img.onerror = function() {
                     UI.unlockButton(qrBtn);
-                    UI.mostrarErrorCampo(urlInput, 'El archivo seleccionado no es una imagen válida.', errorDiv);
+                    errorDiv.style.color = 'var(--cyber-red)';
+                    errorDiv.textContent = 'El archivo seleccionado no es una imagen válida.';
                 };
                 img.src = event.target.result;
             };
             reader.readAsDataURL(file);
         });
-        
+
         // Logout
         document.getElementById('logout-btn').addEventListener('click', async () => {
             try {
@@ -323,11 +313,6 @@
         // Inicializar
         checkAuth();
         loadRecentAnalyses();
-
-        const urlPrecargada = new URLSearchParams(window.location.search).get('url');
-        if (urlPrecargada) {
-            document.getElementById('url').value = urlPrecargada;
-        }
     </script>
 </body>
 </html>
