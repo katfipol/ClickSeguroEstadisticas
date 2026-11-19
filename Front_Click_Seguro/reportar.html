@@ -38,12 +38,18 @@
 
         <section class="panel">
             <form id="report-form" novalidate>
-                <label for="url">URL sospechosa</label>
-                <input id="url" name="url" class="mono" placeholder="https://ejemplo-malicioso.com" required style="width:100%; margin-bottom:1rem;">
-                
-                <label for="motivo">Motivo (opcional)</label>
-                <textarea id="motivo" name="motivo" rows="4" placeholder="Describe por qué crees que es peligrosa (phishing, malware, estafa...)" style="width:100%; margin-bottom:1rem;"></textarea>
-                
+                <div class="form-group">
+                    <label for="url">URL sospechosa</label>
+                    <input id="url" name="url" class="mono" placeholder="https://ejemplo-malicioso.com" required>
+                    <span class="error" id="url-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="motivo">Motivo (opcional, máx. 500 caracteres)</label>
+                    <textarea id="motivo" name="motivo" rows="4" placeholder="Describe por qué crees que es peligrosa (phishing, malware, estafa...)"></textarea>
+                    <span class="error" id="motivo-error"></span>
+                </div>
+
                 <div id="report-msg" class="muted" style="margin-bottom:1rem;"></div>
                 <button type="submit" class="btn">Enviar reporte</button>
             </form>
@@ -51,8 +57,6 @@
     </main>
 
     <script type="module">
-
-        import { Auth, Files, UI } from './js/api.js';
         import { Auth, Reports, UI } from './js/api.js';
 
         async function checkAuth() {
@@ -61,30 +65,61 @@
             else document.getElementById('user-name').textContent = user.nombre;
         }
 
+        // Si se recibio ?url=... desde la vista de resultados, precargarla en el campo
+        const urlParam = new URLSearchParams(window.location.search).get('url');
+        if (urlParam) {
+            document.getElementById('url').value = urlParam;
+        }
+
+        const urlInput = document.getElementById('url');
+        const motivoInput = document.getElementById('motivo');
+        const msgEl = document.getElementById('report-msg');
+        const patronUrl = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z0-9-]{2,}(\/.*)?$/i;
+
+        const validarUrl = UI.vincularValidacionEnVivo(urlInput, (valor) => {
+            const limpia = valor.trim();
+            if (!limpia) return 'Ingresa la URL sospechosa que deseas reportar.';
+            if (!patronUrl.test(limpia)) {
+                return 'El formato de la URL no es válido. Ejemplo: https://sitio-sospechoso.com';
+            }
+            return '';
+        });
+
+        const validarMotivo = UI.vincularValidacionEnVivo(motivoInput, (valor) => {
+            if (valor.trim().length > 500) {
+                return `El motivo no puede superar los 500 caracteres (actual: ${valor.trim().length}).`;
+            }
+            return '';
+        });
+
         document.getElementById('report-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const url = document.getElementById('url').value.trim();
-            const motivo = document.getElementById('motivo').value.trim();
-            const msgEl = document.getElementById('report-msg');
-            const submitBtn = this.querySelector('button[type="submit"]');
-            
-            if (!url) {
-                document.getElementById('url').classList.add('input-error');
-                msgEl.textContent = 'Ingresa la URL sospechosa que deseas reportar.';
-                msgEl.style.color = 'var(--cyber-red)';
+
+            const urlValida = validarUrl();
+            const motivoValido = validarMotivo();
+            if (!urlValida || !motivoValido) {
                 return;
             }
 
+            const url = urlInput.value.trim();
+            const motivo = motivoInput.value.trim();
+            const submitBtn = this.querySelector('button[type="submit"]');
+
             UI.lockButton(submitBtn, 'Enviando...');
             try {
+                msgEl.style.color = 'var(--cyber-cyan)';
                 msgEl.textContent = 'Enviando reporte...';
                 await Reports.store(url, motivo);
                 msgEl.textContent = '';
-                document.getElementById('report-form').reset();
+                this.reset();
+                urlInput.dataset.validado = 'false';
+                motivoInput.dataset.validado = 'false';
+                UI.limpiarErrorCampo(urlInput);
+                UI.limpiarErrorCampo(motivoInput);
                 await UI.alert('Reporte registrado', 'Tu reporte fue registrado exitosamente. Gracias por ayudar a mantener la web segura.');
             } catch (error) {
                 msgEl.textContent = '';
-                await UI.alert('Aviso', error.message || 'No se pudo enviar el reporte.');
+                UI.mostrarErrorCampo(urlInput, error.message || 'No se pudo enviar el reporte.');
             } finally {
                 UI.unlockButton(submitBtn);
             }
