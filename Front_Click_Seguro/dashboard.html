@@ -147,35 +147,54 @@
             }
         }
 
-        // Formulario de análisis
+        const urlInput = document.getElementById('url');
+        const errorDiv = document.getElementById('form-error');
+        const qrBtn = document.getElementById('qr-btn');
+        const qrInput = document.getElementById('qr-input');
+        const patronUrl = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z0-9-]{2,}(\/.*)?$/i;
+
+        qrInput.dataset.validacionPropia = 'true';
+
+        // Validacion en tiempo real del campo URL
+        const validarUrl = UI.vincularValidacionEnVivo(urlInput, (valor) => {
+            errorDiv.style.color = '';
+            const limpia = valor.trim();
+            if (!limpia) return 'Ingresa o pega una URL para analizar.';
+            if (!patronUrl.test(limpia)) {
+                return 'Formato de URL no válido. Ejemplo: https://ejemplo.com/ruta';
+            }
+            return '';
+        }, errorDiv);
+
+        // Si habia un mensaje verde de QR extraido, limpiarlo al editar manualmente
+        urlInput.addEventListener('input', () => {
+            if (!urlInput.classList.contains('input-error') && errorDiv.style.color === 'var(--cyber-green)') {
+                errorDiv.textContent = '';
+                errorDiv.style.color = '';
+            }
+        });
+
+        // Formulario de analisis
         document.getElementById('url-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            const urlInput = document.getElementById('url');
+            if (!validarUrl()) {
+                return;
+            }
+
             const url = urlInput.value.trim();
-            const errorDiv = document.getElementById('form-error');
             const loadingState = document.getElementById('loading-state');
             const progressBar = document.getElementById('progress-bar');
             const timerSpan = document.getElementById('timer');
             const submitBtn = this.querySelector('button[type="submit"]');
             const pasteBtn = document.getElementById('paste-btn');
-            const qrBtn = document.getElementById('qr-btn');
-            
-            errorDiv.style.color = 'var(--cyber-red)';
-            if (!url) {
-            urlInput.classList.add('input-error');
-            errorDiv.textContent = 'Ingresa o pega una URL para analizar.';
-            return;
-        }
 
-            // Bloquear botones para evitar múltiples envíos
             UI.lockButton(submitBtn, 'Analizando...');
             pasteBtn.disabled = true;
             qrBtn.disabled = true;
 
             loadingState.style.display = 'block';
             errorDiv.textContent = '';
-            
+
             let seconds = 0;
             const timer = setInterval(() => {
                 seconds++;
@@ -186,10 +205,10 @@
 
             try {
                 const analysis = await Analyses.create(url);
-                
+
                 const checkStatus = async () => {
                     const status = await Analyses.getStatus(analysis.id_analisis);
-                    
+
                     if (status.terminado) {
                         clearInterval(timer);
                         progressBar.style.width = '100%';
@@ -200,53 +219,40 @@
                         setTimeout(checkStatus, 2000);
                     }
                 };
-                
+
                 setTimeout(checkStatus, 2000);
-                
             } catch (error) {
                 clearInterval(timer);
                 loadingState.style.display = 'none';
-                errorDiv.textContent = error.message || 'Error al analizar la URL';
+                UI.mostrarErrorCampo(urlInput, error.message || 'Error al analizar la URL.', errorDiv);
                 UI.unlockButton(submitBtn);
                 pasteBtn.disabled = false;
                 qrBtn.disabled = false;
             }
         });
 
-        // Botón pegar (HU-02)
+        // Boton pegar (HU-02)
         document.getElementById('paste-btn').addEventListener('click', async () => {
-            const urlInput = document.getElementById('url');
-            const errorDiv = document.getElementById('form-error');
             try {
                 const text = (await navigator.clipboard.readText()).trim();
+                errorDiv.style.color = '';
                 if (!text) {
-                    urlInput.classList.add('input-error');
-                    errorDiv.style.color = 'var(--cyber-red)';
-                    errorDiv.textContent = 'Tu portapapeles está vacío.';
+                    UI.mostrarErrorCampo(urlInput, 'Tu portapapeles está vacío.', errorDiv);
+                    return;
+                }
+                if (!patronUrl.test(text)) {
+                    UI.mostrarErrorCampo(urlInput, 'El texto copiado en tu portapapeles no es una URL válida.', errorDiv);
                     return;
                 }
 
-                const esUrlValida = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z0-9-]{2,}(\/.*)?$/i.test(text);
-                if (!esUrlValida) {
-                    urlInput.classList.add('input-error');
-                    errorDiv.style.color = 'var(--cyber-red)';
-                    errorDiv.textContent = 'El texto copiado en tu portapapeles no es una URL válida.';
-                    return;
-                }
-
-                urlInput.classList.remove('input-error');
                 urlInput.value = text;
-                errorDiv.textContent = '';
+                UI.limpiarErrorCampo(urlInput, errorDiv);
             } catch (err) {
                 await UI.alert('Portapapeles', 'No se pudo leer el portapapeles. Verifica los permisos de tu navegador.');
             }
         });
 
-        // Botón Cargar QR (HU-08)
-        const qrBtn = document.getElementById('qr-btn');
-        const qrInput = document.getElementById('qr-input');
-        const errorDiv = document.getElementById('form-error');
-
+        // Boton Cargar QR (HU-08)
         qrBtn.addEventListener('click', () => qrInput.click());
 
         qrInput.addEventListener('change', function() {
@@ -254,6 +260,7 @@
             if (!file) return;
 
             UI.lockButton(qrBtn, 'Leyendo QR...');
+            errorDiv.style.color = '';
             errorDiv.textContent = '';
 
             const reader = new FileReader();
@@ -270,39 +277,37 @@
                     const qrCode = window.jsQR(imageData.data, imageData.width, imageData.height);
 
                     UI.unlockButton(qrBtn);
-                    qrInput.value = ''; // Limpiar para permitir subir la misma imagen de nuevo si se desea
+                    qrInput.value = '';
 
                     if (!qrCode || !qrCode.data) {
-                        errorDiv.style.color = 'var(--cyber-red)';
-                        errorDiv.textContent = 'No se detectó un código QR legible en la imagen seleccionada.';
+                        UI.mostrarErrorCampo(urlInput, 'No se detectó un código QR legible en la imagen seleccionada.', errorDiv);
                         return;
                     }
 
                     const contenido = qrCode.data.trim();
-                    // Validar que el texto extraído del QR tenga formato de URL o dominio (HU-08)
-                    const esUrlValida = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z0-9-]{2,}(\/.*)?$/i.test(contenido);
-
-                    if (!esUrlValida) {
-                        errorDiv.style.color = 'var(--cyber-red)';
-                        errorDiv.textContent = `El código QR fue leído ("${contenido.substring(0, 40)}"), pero no contiene una URL válida.`;
+                    if (!patronUrl.test(contenido)) {
+                        UI.mostrarErrorCampo(
+                            urlInput,
+                            `El código QR fue leído ("${contenido.substring(0, 40)}"), pero no contiene una URL válida.`,
+                            errorDiv
+                        );
                         return;
                     }
 
-                    // Colocar la URL en el campo sin abrirla automáticamente (HU-08)
-                    document.getElementById('url').value = contenido;
+                    urlInput.value = contenido;
+                    UI.limpiarErrorCampo(urlInput, errorDiv);
                     errorDiv.style.color = 'var(--cyber-green)';
                     errorDiv.textContent = '✓ URL extraída del código QR correctamente. Haz clic en Analizar.';
                 };
                 img.onerror = function() {
                     UI.unlockButton(qrBtn);
-                    errorDiv.style.color = 'var(--cyber-red)';
-                    errorDiv.textContent = 'El archivo seleccionado no es una imagen válida.';
+                    UI.mostrarErrorCampo(urlInput, 'El archivo seleccionado no es una imagen válida.', errorDiv);
                 };
                 img.src = event.target.result;
             };
             reader.readAsDataURL(file);
         });
-
+        
         // Logout
         document.getElementById('logout-btn').addEventListener('click', async () => {
             try {

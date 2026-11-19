@@ -100,6 +100,7 @@ export const Auth = {
             status: response.status,
             json: async () => ({
                 message: primerError || json.message,
+                errors: json.errors || null,
                 usuario: json.data?.usuario
             })
         };
@@ -527,6 +528,58 @@ export const UI = {
             'trojan': 'Troyano'
         };
         return mapa[clave] || texto;
+    },
+
+    // Muestra el error debajo de un campo especifico y aplica el borde rojo
+    mostrarErrorCampo(campo, mensaje, contenedorError = null) {
+        if (!campo) return;
+        campo.classList.add('input-error');
+        campo.setAttribute('aria-invalid', 'true');
+        const elError = contenedorError || document.getElementById(`${campo.id}-error`);
+        if (elError) {
+            elError.textContent = mensaje;
+        }
+    },
+
+    // Quita el borde rojo y el mensaje de error de un campo especifico
+    limpiarErrorCampo(campo, contenedorError = null) {
+        if (!campo) return;
+        campo.classList.remove('input-error');
+        campo.removeAttribute('aria-invalid');
+        const elError = contenedorError || document.getElementById(`${campo.id}-error`);
+        if (elError) {
+            elError.textContent = '';
+        }
+    },
+
+    // Ejecuta una regla sobre un campo y lo actualiza en tiempo real al escribir
+    vincularValidacionEnVivo(campo, validarFn, contenedorError = null) {
+        if (!campo || typeof validarFn !== 'function') return () => true;
+        campo.dataset.validacionPropia = 'true';
+
+        const evaluar = () => {
+            const mensajeError = validarFn(campo.value);
+            if (mensajeError) {
+                this.mostrarErrorCampo(campo, mensajeError, contenedorError);
+                return false;
+            }
+            this.limpiarErrorCampo(campo, contenedorError);
+            return true;
+        };
+
+        ['input', 'change'].forEach(evento => {
+            campo.addEventListener(evento, () => {
+                // Reevalua automaticamente si el campo ya fue validado o tenia error
+                if (campo.dataset.validado === 'true' || campo.classList.contains('input-error')) {
+                    evaluar();
+                }
+            });
+        });
+
+        return () => {
+            campo.dataset.validado = 'true';
+            return evaluar();
+        };
     }
 };
 
@@ -598,25 +651,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 3. Limpieza reactiva: al escribir o adjuntar archivo, ocultar mensajes rojos automáticamente
+    // 3. Limpieza reactiva sin interferir con campos que tienen validacion en tiempo real
     document.querySelectorAll('input, textarea, select').forEach(el => {
         ['input', 'change'].forEach(evento => {
             el.addEventListener(evento, () => {
-                el.classList.remove('input-error');
-                const zone = el.closest('.file-upload-area');
-                if (zone) zone.classList.remove('input-error');
-
-                // Ocultar alertas rojas superiores (.alert-error) si están visibles
+                // Ocultar alertas globales superiores del servidor (.alert-error) al volver a escribir
                 const container = el.closest('form, .panel, main') || document;
                 container.querySelectorAll('.alert-error').forEach(alerta => {
                     alerta.style.display = 'none';
                     alerta.textContent = '';
                 });
 
-                // Limpiar textos de error (.error) cercanos al campo
-                container.querySelectorAll('.error').forEach(err => {
-                    err.textContent = '';
-                });
+                // Si el campo tiene su propia validacion en vivo, ella decide cuando despintarse
+                if (el.dataset.validacionPropia === 'true') {
+                    return;
+                }
+
+                el.classList.remove('input-error');
+                const zone = el.closest('.file-upload-area');
+                if (zone) zone.classList.remove('input-error');
+
+                const errorPropio = el.id ? document.getElementById(`${el.id}-error`) : null;
+                if (errorPropio) {
+                    errorPropio.textContent = '';
+                }
             });
         });
     });
