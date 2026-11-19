@@ -23,6 +23,7 @@
             <a href="passwords.html">CONTRASEÑAS</a>
             <a href="history.html">HISTORIAL</a>
             <a href="estadisticas.html">MIS STATS</a>
+            <a href="globales.html">GLOBALES</a>
             <a href="reportar.html">REPORTAR</a>
         </nav>
         <div style="display:flex; align-items:center; gap:1rem;">
@@ -91,11 +92,15 @@
                     return;
                 }
                 if (file.size > 5 * 1024 * 1024) {
-                    msg.textContent = 'El archivo supera el límite de 5 MB';
+                    zone.classList.add('input-error');
+                    selectedFile = null;
+                    label.textContent = 'Haz clic o arrastra un documento aquí';
+                    msg.textContent = 'El documento supera el límite permitido de 5 MB.';
                     msg.style.color = 'var(--cyber-red)';
                     zone.classList.remove('file-selected');
                     return;
                 }
+                zone.classList.remove('input-error');
 
                 selectedFile = file;
                 label.textContent = `${file.name} (${sizeMB} MB)`;

@@ -22,6 +22,7 @@
             <a href="passwords.html">CONTRASEÑAS</a>
             <a href="history.html">HISTORIAL</a>
             <a href="estadisticas.html">MIS STATS</a>
+            <a href="globales.html">GLOBALES</a>
             <a href="reportar.html">REPORTAR</a>
         </nav>
         <div style="display:flex; align-items:center; gap:1rem;">
@@ -84,7 +85,7 @@
         </div>
     </main>
     <script type="module">
-        import { Auth, Documents } from './js/api.js';
+        import { Auth, Documents, UI } from './js/api.js';
 
         const docId = new URLSearchParams(window.location.search).get('id');
 
@@ -92,6 +93,16 @@
             const user = JSON.parse(localStorage.getItem('user'));
             if (!user) window.location.href = 'index.html';
             else document.getElementById('user-name').textContent = user.nombre;
+        }
+
+        // Asigna prioridad numerica para mostrar primero los enlaces peligrosos y sospechosos
+        function obtenerPesoRiesgoEnlace(analisis) {
+            const nombre = (analisis.tipo_riesgo?.nombre || '').toLowerCase();
+            if (nombre.includes('peligroso')) return 4;
+            if (nombre.includes('sospechoso')) return 3;
+            if (analisis.estado === 'fallido') return 2;
+            if (nombre.includes('seguro')) return 1;
+            return 0;
         }
 
         async function loadDocument() {
@@ -103,7 +114,7 @@
                 const doc = data.documento;
                 document.getElementById('doc-nombre').textContent = doc.nombre;
                 document.getElementById('doc-info').textContent =
-                    `Total de enlaces encontrados: ${doc.total_enlaces} | Omitidos por límite (máx. 20): ${doc.enlaces_omitidos}`;
+                    `Total de enlaces encontrados: ${doc.total_enlaces} | Omitidos por limite (max. 20): ${doc.enlaces_omitidos}`;
 
                 document.getElementById('res-seguro').textContent = data.resumen.seguro ?? 0;
                 document.getElementById('res-sospechoso').textContent = data.resumen.sospechoso ?? 0;
@@ -111,19 +122,50 @@
                 document.getElementById('res-fallido').textContent = data.resumen.fallido ?? 0;
 
                 const tbody = document.getElementById('doc-links-table');
-                let html = '';
-                (data.analisis || []).forEach(a => {
-                    const rClass = a.tipo_riesgo ? `riesgo-${a.tipo_riesgo.nombre.toLowerCase()}` : '';
-                    const rText = a.tipo_riesgo ? a.tipo_riesgo.nombre : (a.estado === 'fallido' ? 'Fallido' : 'Analizando...');
-                    html += `
-                        <tr>
-                            <td class="mono">${a.url?.url || '—'}</td>
-                            <td><span class="badge ${rClass}">${rText}</span></td>
-                            <td><a href="analysis.html?id=${a.id_analisis}" class="btn sec" style="padding:0.3rem 0.7rem; font-size:0.75rem;">Ver detalle</a></td>
-                        </tr>
-                    `;
-                });
-                tbody.innerHTML = html;
+                const listaAnalisis = [...(data.analisis || [])].sort(
+                    (a, b) => obtenerPesoRiesgoEnlace(b) - obtenerPesoRiesgoEnlace(a)
+                );
+
+                if (listaAnalisis.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No se encontraron enlaces validos dentro de este documento.</td></tr>';
+                } else {
+                    let html = '';
+                    listaAnalisis.forEach(a => {
+                        const nivel = a.tipo_riesgo
+                            ? a.tipo_riesgo.nombre.toLowerCase()
+                            : (a.estado === 'fallido' ? 'peligroso' : 'desconocido');
+                        const rClass = `riesgo-${nivel}`;
+                        const rText = a.tipo_riesgo
+                            ? a.tipo_riesgo.nombre.toUpperCase()
+                            : (a.estado === 'fallido' ? 'FALLIDO' : 'ANALIZANDO...');
+                        const claseTexto = UI.obtenerClaseTextoRiesgo(nivel);
+                        const claseFila = nivel === 'peligroso'
+                            ? 'fila-riesgo--peligroso'
+                            : (nivel === 'sospechoso' ? 'fila-riesgo--sospechoso' : '');
+                        const urlOriginal = a.url?.url || '—';
+                        const urlFinal = a.url_final?.url;
+                        const urlTexto = urlFinal || urlOriginal;
+                        const celdaUrl = (urlFinal && urlFinal !== urlOriginal)
+                            ? `${urlFinal}<br><small style="color:var(--cyber-yellow);">↳ Acortado desde: ${urlOriginal}</small>`
+                            : urlOriginal;
+
+                        const botonReportar = (nivel === 'peligroso' || nivel === 'sospechoso') && urlTexto !== '—'
+                            ? `<a href="reportar.html?url=${encodeURIComponent(urlTexto)}" class="btn peligro" style="padding:0.3rem 0.7rem; font-size:0.75rem;">Reportar</a>`
+                            : '';
+
+                        html += `
+                            <tr class="${claseFila}">
+                                <td class="mono ${claseTexto}">${celdaUrl}</td>
+                                <td><span class="badge ${rClass}">${rText}</span></td>
+                                <td class="acciones-celda">
+                                    <a href="analysis.html?id=${a.id_analisis}" class="btn sec" style="padding:0.3rem 0.7rem; font-size:0.75rem;">Ver detalle</a>
+                                    ${botonReportar}
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                }
 
                 if (!data.terminado) {
                     document.getElementById('doc-progreso').style.display = 'block';

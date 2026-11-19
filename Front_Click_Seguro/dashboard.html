@@ -88,6 +88,7 @@
         }
 
         // Cargar análisis recientes
+        // Cargar analisis recientes con colores semanticos de riesgo
         async function loadRecentAnalyses() {
             try {
                 const data = await Analyses.getAll();
@@ -104,28 +105,32 @@
                     const estado = (analysis.estado || '').toLowerCase();
 
                     let textoEstado = 'Falló';
-                    let claseBadge = '';
+                    let claseBadge = 'riesgo-peligroso';
+                    let claseTextoUrl = 'texto-riesgo--peligroso';
 
                     if (nombreRiesgo.includes('seguro')) {
                         textoEstado = 'Seguro';
                         claseBadge = 'riesgo-seguro';
+                        claseTextoUrl = 'texto-riesgo--seguro';
                     } else if (nombreRiesgo.includes('sospechoso')) {
                         textoEstado = 'Sospechoso';
                         claseBadge = 'riesgo-sospechoso';
+                        claseTextoUrl = 'texto-riesgo--sospechoso';
                     } else if (nombreRiesgo.includes('peligroso')) {
                         textoEstado = 'Peligroso';
                         claseBadge = 'riesgo-peligroso';
+                        claseTextoUrl = 'texto-riesgo--peligroso';
                     } else if (estado === 'pendiente' || estado === 'procesando' || estado === 'en_curso') {
                         textoEstado = 'En curso';
-                    } else {
-                        textoEstado = 'Falló';
+                        claseBadge = 'riesgo-desconocido';
+                        claseTextoUrl = 'texto-riesgo--desconocido';
                     }
 
                     html += `
                         <div class="fila" style="justify-content:space-between; padding:0.75rem 0; border-bottom:1px solid var(--cyber-border);">
                             <div style="display:flex; align-items:center; gap:0.75rem; overflow:hidden;">
                                 <span class="badge ${claseBadge}">${textoEstado}</span>
-                                <a href="analysis.html?id=${analysis.id_analisis}" class="mono" style="color:var(--cyber-text); text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                <a href="analysis.html?id=${analysis.id_analisis}" class="mono ${claseTextoUrl}" style="text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                                     ${analysis.url?.url || '—'}
                                 </a>
                             </div>
@@ -138,7 +143,7 @@
                 
                 container.innerHTML = html;
             } catch (error) {
-                console.error('Error cargando análisis:', error);
+                console.error('Error cargando analisis:', error);
             }
         }
 
@@ -313,6 +318,11 @@
         // Inicializar
         checkAuth();
         loadRecentAnalyses();
+
+        const urlPrecargada = new URLSearchParams(window.location.search).get('url');
+        if (urlPrecargada) {
+            document.getElementById('url').value = urlPrecargada;
+        }
     </script>
 </body>
 </html>
