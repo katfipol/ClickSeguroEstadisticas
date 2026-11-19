@@ -93,38 +93,57 @@
             this.innerHTML = mostrar ? iconoOjoCerrado : iconoOjoAbierto;
         });
 
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const errorMsg = document.getElementById('error-message');
+
+        // Reglas individuales para validar ambos campos en simultaneo y en tiempo real
+        const validarEmail = UI.vincularValidacionEnVivo(emailInput, (valor) => {
+            const limpio = valor.trim();
+            if (!limpio) return 'Ingresa tu correo electrónico.';
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(limpio)) {
+                return 'Ingresa un correo electrónico válido (ejemplo: usuario@dominio.com).';
+            }
+            return '';
+        });
+
+        const validarPassword = UI.vincularValidacionEnVivo(passwordInput, (valor) => {
+            if (!valor) return 'Ingresa tu contraseña.';
+            return '';
+        });
+
         document.getElementById('login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            const errorMsg = document.getElementById('error-message');
-            
-            // Validación
-            if (!email || !password) {
-                errorMsg.textContent = 'Correo y contraseña son obligatorios';
-                errorMsg.style.display = 'block';
+            errorMsg.style.display = 'none';
+            errorMsg.textContent = '';
+
+            // Ejecutar ambas validaciones sin detenerse en la primera para mostrar todos los errores
+            const emailValido = validarEmail();
+            const passwordValido = validarPassword();
+            if (!emailValido || !passwordValido) {
                 return;
             }
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
             const submitBtn = this.querySelector('button[type="submit"]');
             UI.lockButton(submitBtn, 'Verificando...');
+
             try {
                 const response = await Auth.login(email, password);
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Guardar usuario en localStorage
                     localStorage.setItem('user', JSON.stringify(data.usuario));
-                    // Redirigir al dashboard
                     window.location.href = 'dashboard.html';
                 } else {
                     UI.unlockButton(submitBtn);
-                    errorMsg.textContent = data.message || 'Credenciales incorrectas';
+                    errorMsg.textContent = data.message || 'Correo o contraseña incorrectos.';
                     errorMsg.style.display = 'block';
                 }
             } catch (error) {
                 UI.unlockButton(submitBtn);
-                errorMsg.textContent = 'Error de conexión con el servidor';
+                errorMsg.textContent = 'Error de conexión con el servidor.';
                 errorMsg.style.display = 'block';
                 console.error(error);
             }

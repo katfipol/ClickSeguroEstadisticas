@@ -55,7 +55,7 @@
             <button id="verify-btn" class="btn" style="margin-top:1rem;">Consultar en VirusTotal</button>
         </section>
 
-        <div id="loading" style="display:none;" class="panel" style="text-align:center;">
+       <div id="loading" class="panel" style="display:none; text-align:center;">
             <p class="muted">Verificando...</p>
         </div>
     </main>
@@ -77,6 +77,7 @@
         const msg = document.getElementById('archivo-msg');
         const hashEl = document.getElementById('archivo-hash');
         const verifyBtn = document.getElementById('verify-btn');
+        input.dataset.validacionPropia = 'true';
 
         input.addEventListener('change', async function() {
             if (this.files[0]) {
@@ -84,10 +85,14 @@
                 const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
                 
                 if (file.size > 50 * 1024 * 1024) {
-                    msg.textContent = 'El archivo supera el límite de 50 MB';
+                    msg.textContent = 'El archivo supera el límite permitido de 50 MB.';
                     msg.style.color = 'var(--cyber-red)';
                     selectedFile = null;
+                    hashEl.textContent = '';
+                    label.textContent = 'Haz clic o arrastra un archivo aquí';
+                    zone.classList.remove('file-selected');
                     zone.classList.add('input-error');
+                    this.value = '';
                     return;
                 }
                 

@@ -52,22 +52,26 @@
                     <div class="form-group">
                         <label for="nombre">> Nombre <span style="color:var(--cyber-red);">*</span></label>
                         <input type="text" id="nombre" name="nombre" placeholder="Ej: Mateo" required autofocus>
+                        <span class="error" id="nombre-error"></span>
                     </div>
 
                     <div class="fila" style="gap:1rem;">
                         <div class="form-group" style="flex:1;">
                             <label for="apellido_paterno">> Ap. Paterno</label>
                             <input type="text" id="apellido_paterno" name="apellido_paterno" placeholder="Ej: González">
+                            <span class="error" id="apellido_paterno-error"></span>
                         </div>
                         <div class="form-group" style="flex:1;">
                             <label for="apellido_materno">> Ap. Materno</label>
                             <input type="text" id="apellido_materno" name="apellido_materno" placeholder="Ej: López">
+                            <span class="error" id="apellido_materno-error"></span>
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label for="email">> Correo Electrónico <span style="color:var(--cyber-red);">*</span></label>
                         <input type="email" id="email" name="email" placeholder="usuario@clickseguro.com" required>
+                        <span class="error" id="email-error"></span>
                     </div>
 
                     <div class="form-group">
@@ -81,6 +85,7 @@
                                 </svg>
                             </button>
                         </div>
+                        <span class="error" id="password-error"></span>
                         <div class="medidor" style="margin-top:0.5rem; background:rgba(0,0,0,0.6); height:4px; border-radius:2px;">
                             <div id="strength-bar" style="width:0%; height:100%; background:var(--cyber-red); border-radius:2px; transition:all 0.3s;"></div>
                         </div>
@@ -98,6 +103,7 @@
                                 </svg>
                             </button>
                         </div>
+                        <span class="error" id="password_confirmation-error"></span>
                     </div>
 
                     <button type="submit" class="btn" style="width:100%; padding:1rem;">REGISTRAR USUARIO</button>
@@ -164,80 +170,125 @@
             }
         });
 
-        // Registro con mensajes de error específicos
+        const nombreInput = document.getElementById('nombre');
+        const apPaternoInput = document.getElementById('apellido_paterno');
+        const apMaternoInput = document.getElementById('apellido_materno');
+        const emailInput = document.getElementById('email');
+        const confirmInput = document.getElementById('password_confirmation');
+        const errorMsg = document.getElementById('error-message');
+        const soloLetrasRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
+
+        // Validadores reactivos por cada campo del registro
+        const validarNombre = UI.vincularValidacionEnVivo(nombreInput, (valor) => {
+            const limpio = valor.trim();
+            if (!limpio) return 'El nombre es obligatorio.';
+            if (!soloLetrasRegex.test(limpio)) return 'Solo se permiten letras y espacios (sin números ni símbolos).';
+            return '';
+        });
+
+        const validarApPaterno = UI.vincularValidacionEnVivo(apPaternoInput, (valor) => {
+            const limpio = valor.trim();
+            if (limpio && !soloLetrasRegex.test(limpio)) return 'Solo se permiten letras y espacios.';
+            return '';
+        });
+
+        const validarApMaterno = UI.vincularValidacionEnVivo(apMaternoInput, (valor) => {
+            const limpio = valor.trim();
+            if (limpio && !soloLetrasRegex.test(limpio)) return 'Solo se permiten letras y espacios.';
+            return '';
+        });
+
+        const validarEmail = UI.vincularValidacionEnVivo(emailInput, (valor) => {
+            const limpio = valor.trim();
+            if (!limpio) return 'El correo electrónico es obligatorio.';
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(limpio)) {
+                return 'Ingresa un correo válido (ejemplo: usuario@dominio.com).';
+            }
+            return '';
+        });
+
+        const validarPassword = UI.vincularValidacionEnVivo(pwd, (valor) => {
+            if (!valor) return 'La contraseña es obligatoria.';
+            if (valor.length < 8) return 'Debe tener como mínimo 8 caracteres.';
+            return '';
+        });
+
+        const validarConfirmacion = UI.vincularValidacionEnVivo(confirmInput, (valor) => {
+            if (!valor) return 'Debes confirmar tu contraseña.';
+            if (valor !== pwd.value) return 'Las contraseñas no coinciden.';
+            return '';
+        });
+
+        // Si el usuario edita la contraseña principal, revalidar tambien la confirmacion en vivo
+        pwd.addEventListener('input', () => {
+            if (confirmInput.value || confirmInput.dataset.validado === 'true') {
+                validarConfirmacion();
+            }
+        });
+
+        // Registro con validacion simultanea en cliente y mapeo de errores del servidor por campo
         document.getElementById('register-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const errorMsg = document.getElementById('error-message');
-            const mostrarError = (msg) => {
-                errorMsg.textContent = msg;
-                errorMsg.style.display = 'block';
-            };
+            errorMsg.style.display = 'none';
+            errorMsg.textContent = '';
+
+            // Evaluar los 6 campos al mismo tiempo para marcar todos los errores de una sola vez
+            const resultados = [
+                validarNombre(),
+                validarApPaterno(),
+                validarApMaterno(),
+                validarEmail(),
+                validarPassword(),
+                validarConfirmacion()
+            ];
+            if (resultados.includes(false)) {
+                return;
+            }
 
             const userData = {
-                nombre: document.getElementById('nombre').value.trim(),
-                apellido_paterno: document.getElementById('apellido_paterno').value.trim(),
-                apellido_materno: document.getElementById('apellido_materno').value.trim(),
-                email: document.getElementById('email').value.trim(),
-                password: document.getElementById('password').value,
-                password_confirmation: document.getElementById('password_confirmation').value
+                nombre: nombreInput.value.trim(),
+                apellido_paterno: apPaternoInput.value.trim(),
+                apellido_materno: apMaternoInput.value.trim(),
+                email: emailInput.value.trim(),
+                password: pwd.value,
+                password_confirmation: confirmInput.value
             };
-
-            const faltantes = [];
-            if (!userData.nombre) faltantes.push('Nombre');
-            if (!userData.email) faltantes.push('Correo Electrónico');
-            if (!userData.password) faltantes.push('Contraseña');
-            if (!userData.password_confirmation) faltantes.push('Confirmar Contraseña');
-
-            if (faltantes.length > 0) {
-                mostrarError(`Faltan los siguientes campos obligatorios: ${faltantes.join(', ')}.`);
-                return;
-            }
-            // Validar que Nombre y Apellidos solo contengan letras y espacios (sin numeros ni simbolos)
-            const soloLetrasRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
-
-            if (!soloLetrasRegex.test(userData.nombre)) {
-                document.getElementById('nombre').classList.add('input-error');
-                mostrarError('El Nombre solo puede contener letras y espacios (no se permiten números ni caracteres especiales).');
-                return;
-            }
-            if (userData.apellido_paterno && !soloLetrasRegex.test(userData.apellido_paterno)) {
-                document.getElementById('apellido_paterno').classList.add('input-error');
-                mostrarError('El Apellido Paterno solo puede contener letras y espacios (sin números ni caracteres especiales).');
-                return;
-            }
-            if (userData.apellido_materno && !soloLetrasRegex.test(userData.apellido_materno)) {
-                document.getElementById('apellido_materno').classList.add('input-error');
-                mostrarError('El Apellido Materno solo puede contener letras y espacios (sin números ni caracteres especiales).');
-                return;
-            }
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userData.email)) {
-                mostrarError('Ingresa un correo electrónico válido (ejemplo: usuario@dominio.com).');
-                return;
-            }
-            if (userData.password.length < 8) {
-                mostrarError('La contraseña debe tener como mínimo 8 caracteres.');
-                return;
-            }
-            if (userData.password !== userData.password_confirmation) {
-                mostrarError('Las contraseñas ingresadas no coinciden.');
-                return;
-            }
 
             const submitBtn = this.querySelector('button[type="submit"]');
             UI.lockButton(submitBtn, 'Verificando...');
+
             try {
                 const response = await Auth.register(userData);
                 const data = await response.json();
+
                 if (response.ok) {
                     localStorage.setItem('user', JSON.stringify(data.usuario));
                     window.location.href = 'dashboard.html';
                 } else {
-                    mostrarError(data.message || 'Error al registrar el usuario.');
                     UI.unlockButton(submitBtn);
+                    let mapeado = false;
+
+                    // Ubicar los errores devueltos por Laravel (ej. correo repetido o clave filtrada HIBP) debajo de cada campo
+                    if (data.errors && typeof data.errors === 'object') {
+                        Object.entries(data.errors).forEach(([campoNombre, mensajes]) => {
+                            const inputDestino = document.getElementById(campoNombre);
+                            const texto = Array.isArray(mensajes) ? mensajes[0] : mensajes;
+                            if (inputDestino && texto) {
+                                UI.mostrarErrorCampo(inputDestino, texto);
+                                mapeado = true;
+                            }
+                        });
+                    }
+
+                    if (!mapeado) {
+                        errorMsg.textContent = data.message || 'Error al registrar el usuario.';
+                        errorMsg.style.display = 'block';
+                    }
                 }
             } catch (error) {
                 UI.unlockButton(submitBtn);
-                mostrarError(error.message || 'Error de conexión con el servidor.');
+                errorMsg.textContent = error.message || 'Error de conexión con el servidor.';
+                errorMsg.style.display = 'block';
             }
         });
     </script>
