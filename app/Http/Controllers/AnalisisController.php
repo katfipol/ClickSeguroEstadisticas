@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Exceptions\AnalisisException;
 use App\Http\Requests\UrlRequest;
+use App\Http\Resources\AnalisisResource;
 use App\Services\AnalisisService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class AnalisisController extends Controller
 {
@@ -13,51 +15,104 @@ class AnalisisController extends Controller
     {
     }
 
-    public function dashboard(Request $request)
+    /**
+     * Lista paginada del historial de análisis del usuario (reemplaza dashboard y history).
+     */
+    public function index(Request $request): JsonResponse
     {
-        $recientes = $request->user()->analisis()->with(['url', 'tipoRiesgo'])->latest('id_analisis')->limit(5)->get();
-        return view('analisis.dashboard', compact('recientes'));
-    }
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-    public function store(UrlRequest $request)
-    {
-        try {
-            $analisis = $this->servicio->analizar($request->user(), $request->url);
-        } catch (AnalisisException $excepcion) {
-            return back()->withInput()->withErrors(['url' => $excepcion->getMessage()]);
-        }
-        return redirect()->route('analisis.show', $analisis->getKey());
-    }
-
-    public function show(Request $request, int $id)
-    {
-        // Siempre acotado al usuario autenticado: otro usuario recibe 404.
         $analisis = $request->user()->analisis()
-            ->with(['url.dominio', 'urlFinal.dominio', 'tipoRiesgo', 'detalles.fuenteVerificacion', 'anterior.tipoRiesgo', 'anterior.detalles'])
-            ->findOrFail($id);
-        return view('analisis.show', compact('analisis'));
+            ->with(['url', 'urlFinal', 'tipoRiesgo', 'documento'])
+            ->latest('id_analisis')
+            ->paginate($perPage);
+
+        return AnalisisResource::collection($analisis)
+            ->additional(['status' => 'success'])
+            ->response();
     }
 
-    public function history(Request $request)
+    /**
+     * Inicia un análisis de URL en segundo plano (HU-02, HU-18).
+     */
+    public function store(UrlRequest $request): JsonResponse
     {
-        $analisis = $request->user()->analisis()->with(['url', 'urlFinal', 'tipoRiesgo'])->latest('id_analisis')->simplePaginate(10);
-        return view('analisis.history', compact('analisis'));
+        $analisis = $this->servicio->crearPendiente($request->user(), $request->url);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Análisis iniciado en segundo plano.',
+            'data'    => new AnalisisResource($analisis),
+        ], Response::HTTP_ACCEPTED); // 202
     }
 
-    public function reanalizar(Request $request, int $id)
+    /**
+     * Muestra el detalle completo de un análisis (HU-03 a HU-07).
+     */
+    public function show(Request $request, int $id): JsonResponse
+    {
+        $analisis = $request->user()->analisis()
+            ->with([
+                'url.dominio',
+                'urlFinal.dominio',
+                'tipoRiesgo',
+                'detalles.fuenteVerificacion',
+                'anterior.tipoRiesgo',
+                'anterior.detalles',
+                'documento',
+            ])
+            ->findOrFail($id);
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => new AnalisisResource($analisis),
+        ], Response::HTTP_OK);
+    }
+
+    /**
+     * Consulta rápida de estado para polling desde el frontend (HU-18).
+     */
+    public function status(Request $request, int $id): JsonResponse
+    {
+        $analisis = $request->user()->analisis()->findOrFail($id);
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => [
+                'id_analisis' => $analisis->id_analisis,
+                'terminado'   => $analisis->estaTerminado(),
+                'estado'      => $analisis->estado,
+                'error'       => $analisis->error,
+            ],
+        ], Response::HTTP_OK);
+    }
+
+    /**
+     * Solicita un nuevo análisis enlazado al análisis anterior (HU-07).
+     */
+    public function reanalyze(Request $request, int $id): JsonResponse
     {
         $anterior = $request->user()->analisis()->with('url')->findOrFail($id);
-        try {
-            $nuevo = $this->servicio->analizar($request->user(), $anterior->url->url, $anterior);
-        } catch (AnalisisException $excepcion) {
-            return redirect()->route('analisis.show', $id)->withErrors(['url' => $excepcion->getMessage()]);
-        }
-        return redirect()->route('analisis.show', $nuevo->getKey());
+        $nuevo = $this->servicio->crearPendiente($request->user(), $anterior->url->url, $anterior);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Reanálisis iniciado en segundo plano.',
+            'data'    => new AnalisisResource($nuevo),
+        ], Response::HTTP_ACCEPTED); // 202
     }
 
-    public function destroy(Request $request, int $id)
+    /**
+     * Elimina un análisis del historial del usuario.
+     */
+    public function destroy(Request $request, int $id): JsonResponse
     {
-        $request->user()->analisis()->findOrFail($id)->delete();
-        return redirect()->route('historial')->with('ok', 'Análisis eliminado.');
+        $analisis = $request->user()->analisis()->findOrFail($id);
+        $analisis->delete();
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Análisis eliminado correctamente.',
+        ], Response::HTTP_OK);
     }
 }

@@ -12,6 +12,11 @@ class Reporte extends Model
 
     protected $fillable = ['id_usuario', 'id_url', 'motivo', 'estado'];
 
+    public function getIdAttribute()
+    {
+        return $this->getKey();
+    }
+
     public function usuario()
     {
         return $this->belongsTo(Usuario::class, 'id_usuario', 'id_usuario');

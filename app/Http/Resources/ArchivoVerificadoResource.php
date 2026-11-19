@@ -26,8 +26,8 @@ class ArchivoVerificadoResource extends JsonResource
             'detalles' => $this->whenLoaded('detalles', fn () => $this->detalles->map(fn ($d) => [
                 'id_detalle_archivo' => $d->id_detalle_archivo,
                 'motor'              => $d->motor,
-                'resultado'          => $d->resultado,
-                'categoria'          => $d->categoria,
+                'resultado'          => \App\Models\Analisis::traducirTermino($d->resultado),
+                'categoria'          => \App\Models\Analisis::traducirTermino($d->categoria),
                 'fuente'             => $d->relationLoaded('fuenteVerificacion') ? $d->fuenteVerificacion?->nombre : null,
             ])),
         ];

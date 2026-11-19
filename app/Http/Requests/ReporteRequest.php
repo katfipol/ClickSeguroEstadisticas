@@ -15,6 +15,10 @@ class ReporteRequest extends FormRequest
 
     public function messages(): array
     {
-        return ['url.required' => 'Ingresa la URL que quieres reportar.'];
+        return [
+            'url.required' => 'Ingresa la URL que quieres reportar.',
+            'url.max'      => 'La URL es demasiado larga.',
+            'motivo.max'   => 'El motivo no puede superar los 500 caracteres.',
+        ];
     }
 }

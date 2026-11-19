@@ -4,33 +4,62 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\AnalisisException;
 use App\Http\Requests\ReporteRequest;
+use App\Http\Resources\ReporteResource;
 use App\Services\AnalisisService;
 use App\Services\UrlService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
+/** HU-09: Reporte de URLs sospechosas por parte de los usuarios */
 class ReporteController extends Controller
 {
-    public function create(Request $request)
-    {
-        $reportes = $request->user()->reportes()->with('url')->latest('id_reporte')->limit(10)->get();
-        return view('reportes.create', compact('reportes'));
+    public function __construct(
+        private UrlService $urls,
+        private AnalisisService $analisisService
+    ) {
     }
 
-    public function store(ReporteRequest $request, UrlService $urls, AnalisisService $servicio)
+    /**
+     * Lista los últimos reportes realizados por el usuario autenticado.
+     */
+    public function index(Request $request): JsonResponse
     {
-        try {
-            $url = $servicio->registrarUrl($urls->normalizar($request->url));
-        } catch (AnalisisException $excepcion) {
-            return back()->withInput()->withErrors(['url' => $excepcion->getMessage()]);
+        $reportes = $request->user()->reportes()
+            ->with('url')
+            ->latest('id_reporte')
+            ->limit(15)
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => ReporteResource::collection($reportes),
+        ], Response::HTTP_OK);
+    }
+
+    /**
+     * Registra un nuevo reporte de URL (HU-09).
+     */
+    public function store(ReporteRequest $request): JsonResponse
+    {
+        $url = $this->analisisService->registrarUrl(
+            $this->urls->normalizar($request->url)
+        );
+
+        if ($request->user()->reportes()->where('id_url', $url->id_url)->exists()) {
+            throw new AnalisisException('Ya reportaste esta URL anteriormente.');
         }
-        if ($request->user()->reportes()->where('id_url', $url->getKey())->exists()) {
-            return back()->withInput()->withErrors(['url' => 'Ya reportaste esta URL.']);
-        }
-        $request->user()->reportes()->create([
-            'id_url' => $url->getKey(),
+
+        $reporte = $request->user()->reportes()->create([
+            'id_url' => $url->id_url,
             'motivo' => $request->motivo,
             'estado' => 'pendiente',
         ]);
-        return redirect()->route('reportes.create')->with('ok', 'Reporte registrado. Gracias por ayudar.');
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Reporte registrado. Gracias por ayudar.',
+            'data'    => new ReporteResource($reporte->load('url')),
+        ], Response::HTTP_CREATED); // 201
     }
 }
