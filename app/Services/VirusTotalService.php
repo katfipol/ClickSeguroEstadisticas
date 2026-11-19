@@ -130,6 +130,7 @@ class VirusTotalService implements EscaneoSeguridadInterface
     }
 
     /** Conserva solo lo necesario: conteos y motores que marcaron el objeto. */
+    /** Conserva solo lo necesario: conteos y motores que marcaron el objeto, traducidos al espanol. */
     private function transformar(array $stats, array $resultados): array
     {
         $hallazgos = [];
@@ -139,12 +140,17 @@ class VirusTotalService implements EscaneoSeguridadInterface
                 continue;
             }
             $motor = $r['engine_name'] ?? $nombre;
-            $etiqueta = $r['result'] ?? null;
+            $etiquetaOriginal = $r['result'] ?? null;
+            $resultadoEsp = $cat === 'malicious' ? 'Malicioso' : 'Sospechoso';
+            $categoriaEsp = $etiquetaOriginal
+                ? \App\Models\Analisis::traducirTermino($etiquetaOriginal)
+                : $resultadoEsp;
+
             $hallazgos[] = [
                 'motor'       => mb_substr($motor, 0, 100),
-                'resultado'   => $cat === 'malicious' ? 'malicioso' : 'sospechoso',
-                'categoria'   => $etiqueta ? mb_substr($etiqueta, 0, 100) : null,
-                'descripcion' => mb_substr("$motor la marcó como " . ($etiqueta ?: $cat), 0, 255),
+                'resultado'   => $resultadoEsp,
+                'categoria'   => mb_substr($categoriaEsp, 0, 100),
+                'descripcion' => mb_substr("$motor la marcó como $categoriaEsp", 0, 255),
             ];
         }
         return [

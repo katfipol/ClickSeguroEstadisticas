@@ -72,6 +72,43 @@ class Analisis extends Model
 
     public function getDeteccionesAttribute(): int
     {
-        return $this->detalles->whereNotNull('motor')->count();
+        return $this->detalles->filter(function ($d) {
+            if (empty($d->motor) || strtolower($d->motor) === 'resumen general') {
+                return false;
+            }
+            $res = strtolower(trim($d->resultado ?? ''));
+            return !in_array($res, ['limpio', 'clean', 'harmless', 'seguro', 'undetected', 'unrated', ''], true);
+        })->count();
+    }
+
+    // Traduce automaticamente los resultados y categorias de VirusTotal al espanol
+    public static function traducirTermino(?string $texto): string
+    {
+        if ($texto === null || trim($texto) === '') {
+            return '—';
+        }
+
+        $limpio = strtolower(trim($texto));
+        $diccionario = [
+            'malicious'            => 'Malicioso',
+            'suspicious'           => 'Sospechoso',
+            'phishing'             => 'Phishing / Suplantación',
+            'malware'              => 'Malware / Código dañino',
+            'harmless'             => 'Inofensivo / Seguro',
+            'clean'                => 'Limpio',
+            'undetected'           => 'Sin detecciones',
+            'unrated'              => 'Sin calificar',
+            'spam'                 => 'Spam / Correo no deseado',
+            'scam'                 => 'Estafa / Fraude',
+            'ransomware'           => 'Ransomware / Secuestro de datos',
+            'trojan'               => 'Troyano',
+            'spyware'              => 'Spyware / Espía',
+            'adware'               => 'Adware / Publicidad invasiva',
+            'cryptomining'         => 'Minería oculta de criptomonedas',
+            'command and control'  => 'Servidor de Comando y Control (C2)',
+            'botnet'               => 'Red Zombi (Botnet)',
+        ];
+
+        return $diccionario[$limpio] ?? ucfirst($texto);
     }
 }

@@ -98,12 +98,17 @@ class AnalisisService
         if (!$r['hallazgos']) {
             return [[
                 'motor'       => null,
-                'resultado'   => 'limpio',
-                'categoria'   => null,
+                'resultado'   => 'Limpio',
+                'categoria'   => 'Inofensivo / Seguro',
                 'descripcion' => 'Ningún motor marcó la URL como riesgosa.',
             ]];
         }
 
-        return $r['hallazgos'];
+        return array_map(fn (array $f) => [
+            'motor'       => $f['motor'] ?? null,
+            'resultado'   => Analisis::traducirTermino($f['resultado'] ?? null),
+            'categoria'   => Analisis::traducirTermino($f['categoria'] ?? null),
+            'descripcion' => $f['descripcion'] ?? null,
+        ], $r['hallazgos']);
     }
 }
