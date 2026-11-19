@@ -541,9 +541,32 @@ tr:hover {
 }
 
 .error {
+  display: block;
   color: var(--cyber-red);
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
+  font-size: 0.82rem;
+  margin-top: 0.35rem;
+  line-height: 1.35;
+}
+
+.error:empty {
+  display: none;
+}
+
+.form-group input.input-error,
+.form-group textarea.input-error,
+.form-group select.input-error,
+input.input-error,
+textarea.input-error {
+  border-color: var(--cyber-red) !important;
+  box-shadow: 0 0 8px rgba(255, 0, 64, 0.3) !important;
+}
+
+.form-group input.input-error:focus,
+.form-group textarea.input-error:focus,
+input.input-error:focus,
+textarea.input-error:focus {
+  border-color: var(--cyber-red) !important;
+  box-shadow: 0 0 12px rgba(255, 0, 64, 0.45) !important;
 }
 
 .fila {
@@ -574,6 +597,16 @@ tr:hover {
   background: rgba(0, 255, 65, 0.05);
 }
 
+/* Estado bloqueado global para todos los botones del sistema */
+.btn:disabled,
+.btn-login:disabled {
+  opacity: 0.45;
+  cursor: not-allowed !important;
+  pointer-events: none;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .auth-wrapper {
@@ -596,15 +629,6 @@ tr:hover {
     overflow-x: auto;
   }
 
-  /* Estado bloqueado para todos los botones del sistema */
-.btn:disabled,
-.btn-login:disabled {
-  opacity: 0.45;
-  cursor: not-allowed !important;
-  pointer-events: none;
-  box-shadow: none !important;
-  transform: none !important;
-}
 
 /* Ventana emergente (Modal Cyberpunk) */
 .cyber-modal-overlay {
